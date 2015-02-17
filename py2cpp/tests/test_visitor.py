@@ -265,6 +265,11 @@ def test_Assign():
     result = generate(node)
     assert result == 'a = 72;'
 
+def test_AutAssign():
+    node = gen_AugAssign()
+    result = generate(node)
+    assert result == 'a += 72;'
+
 def test_FunctionDef():
     node = gen_FunctionDef()
     result = generate(node)

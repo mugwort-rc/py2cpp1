@@ -5,6 +5,22 @@ import ast
 import six
 
 
+OPERATORS = {
+    ast.Add: '+',
+    ast.Sub: '-',
+    ast.Mult: '*',
+    ast.Div: '/',
+    ast.Mod: '%',
+    ast.Pow: '**',
+    ast.LShift: '<<',
+    ast.RShift: '>>',
+    ast.BitOr: '|',
+    ast.BitXor: '^',
+    ast.BitAnd: '&',
+    ast.FloorDiv: '//',
+}
+
+
 if six.PY3:
     class Print(object):
         def __init__(self, values, nl=True):
@@ -47,6 +63,19 @@ class SourceGenerator(ast.NodeVisitor):
         targets = [self.visit(x) for x in node.targets]
         value = self.visit(node.value)
         return self.code('{} = {};'.format(' = '.join(targets), value))
+
+    def visit_AugAssign(self, node):
+        target = self.visit(node.target)
+        op = OPERATORS[node.op.__class__]
+        value = self.visit(node.value)
+        code = ''
+        if op == '**':
+            code = '{0} = std::pow({0}, {1});'.format(target, value)
+        elif op == '//':
+            code = '{0} = std::floor(double({0}) / {1});'.format(target, value)
+        else:
+            code = '{} {}= {};'.format(target, op, value)
+        return self.code(code)
 
     def visit_Expr(self, node):
         # print special case
