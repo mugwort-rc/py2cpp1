@@ -54,8 +54,20 @@ class SourceGenerator(ast.NodeVisitor):
         self.indent_base = ' '*4
         self.indent_level = 0
 
+        self.system_headers = []
+
     def code(self, code):
         return self.indent_base*self.indent_level + code
+
+    def add_system_header(self, header):
+        if header not in self.system_headers:
+            self.system_headers.append(header)
+
+    def headers(self):
+        headers = []
+        sys_header = '#include <{}>'
+        headers += [sys_header.format(x) for x in sorted(self.system_headers)]
+        return '\n'.join(headers)
 
     # Statements
 
@@ -69,10 +81,12 @@ class SourceGenerator(ast.NodeVisitor):
         op = OPERATORS[node.op.__class__]
         value = self.visit(node.value)
         code = ''
-        if op == '**':
-            code = '{0} = std::pow({0}, {1});'.format(target, value)
-        elif op == '//':
-            code = '{0} = std::floor(double({0}) / {1});'.format(target, value)
+        if op in ['**', '//']:
+            self.add_system_header('cmath')
+            if op == '**':
+                code = '{0} = std::pow({0}, {1});'.format(target, value)
+            elif op == '//':
+                code = '{0} = std::floor(double({0}) / {1});'.format(target, value)
         else:
             code = '{} {}= {};'.format(target, op, value)
         return self.code(code)
@@ -114,6 +128,7 @@ class SourceGenerator(ast.NodeVisitor):
         return ''  # no indent
 
     def visit_Print(self, node):
+        self.add_system_header('iostream')
         temp = []
         dest = 'std::cout'
         if node.dest:
