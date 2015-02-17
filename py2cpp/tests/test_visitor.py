@@ -260,6 +260,20 @@ def gen_arguments():
 
 # Statements
 
+def test_FunctionDef():
+    node = gen_FunctionDef()
+    result = generate(node)
+    assert result == '\n'.join([
+        'void a() {',
+        '',
+        '}',
+    ])
+
+def test_Pass():
+    node = gen_Pass()
+    result = generate(node)
+    assert result == ''
+
 @py2only
 def test_Print():
     node = gen_Print()
