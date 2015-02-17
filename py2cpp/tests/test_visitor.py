@@ -258,6 +258,20 @@ def gen_arguments():
 #===============================================================================
 # source generator
 
+# Modules
+
+def test_Module():
+    node = ast.parse("""
+def main():
+    print("Hello World!")
+""")
+    result = generate(node)
+    assert result == """#include <iostream>
+
+void main() {
+    std::cout << "Hello World!" << std::endl;
+}"""
+
 # Statements
 
 def test_Assign():

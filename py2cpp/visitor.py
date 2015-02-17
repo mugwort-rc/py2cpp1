@@ -69,6 +69,19 @@ class SourceGenerator(ast.NodeVisitor):
         headers += [sys_header.format(x) for x in sorted(self.system_headers)]
         return '\n'.join(headers)
 
+    # Modules
+
+    def visit_Module(self, node):
+        bodies = []
+        for child in node.body:
+            ret = self.visit(child)
+            if ret is not None:
+                bodies.append(ret)
+        sources = []
+        sources.append(self.headers())
+        sources.append('\n'.join(bodies))
+        return '\n\n'.join(sources)
+
     # Statements
 
     def visit_Assign(self, node):
