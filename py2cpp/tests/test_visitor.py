@@ -30,7 +30,7 @@ SOURCES = {
     'ImportFrom': "from a import b",
     'Import': "import a",
     'Expr': "a",
-    'FunctionDef': "def a():  pass",
+    'FunctionDef': "def a():  print('Hello')",
     'ClassDef': "class a:  pass",
     'If': "if test:  pass",
     'For': "for i in range(72):  pass",
@@ -265,7 +265,7 @@ def test_FunctionDef():
     result = generate(node)
     assert result == '\n'.join([
         'void a() {',
-        '',
+        '    std::cout << "Hello" << std::endl;',
         '}',
     ])
 

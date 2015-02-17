@@ -2,6 +2,16 @@
 
 import ast
 
+import six
+
+
+if six.PY3:
+    class Print(object):
+        def __init__(self, values, nl=True):
+            self.dest = None
+            self.values = values
+            self.nl = nl
+
 
 class CodeBlock(object):
     def __init__(self, generator, node):
@@ -33,6 +43,17 @@ class SourceGenerator(ast.NodeVisitor):
 
     # Statements
 
+    def visit_Expr(self, node):
+        # print special case
+        if isinstance(node.value, ast.Call) and node.value.func.id == 'print':
+            kw = {x.arg: x.value for x in node.value.keywords}
+            dummy = Print(node.value.args, 'end' not in kw)
+            if 'end' in kw:
+                dummy.values.append(kw['end'])
+            return self.visit(dummy)
+        value = self.visit(node.value)
+        return self.code('{};'.format(value))
+
     def visit_FunctionDef(self, node):
         temp = []
         config = self.config.get(node.name, {})
@@ -49,7 +70,9 @@ class SourceGenerator(ast.NodeVisitor):
         temp.append(self.code('{} {}({}) {{'.format(rettype, node.name, args)))
         with CodeBlock(self, node):
             for child in node.body:
-                temp.append(self.visit(child))
+                line = self.visit(child)
+                if line is not None:
+                    temp.append(line)
         temp.append(self.code('}'))
         return '\n'.join(temp)
 
@@ -69,6 +92,13 @@ class SourceGenerator(ast.NodeVisitor):
         return self.code('{};'.format(' << '.join(temp)))
 
     # Expressions
+
+    def visit_Call(self, node):
+        name = self.visit(node.func)
+        args = []
+        for arg in node.args:
+            args.append(self.visit(arg))
+        return '{}({})'.format(name, ', '.join(args))
 
     def visit_Name(self, node):
         return node.id
