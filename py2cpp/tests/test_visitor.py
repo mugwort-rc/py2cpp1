@@ -260,6 +260,11 @@ def gen_arguments():
 
 # Statements
 
+def test_Assign():
+    node = gen_Assign()
+    result = generate(node)
+    assert result == 'a = 72;'
+
 def test_FunctionDef():
     node = gen_FunctionDef()
     result = generate(node)

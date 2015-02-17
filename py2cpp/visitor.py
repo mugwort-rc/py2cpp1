@@ -43,6 +43,11 @@ class SourceGenerator(ast.NodeVisitor):
 
     # Statements
 
+    def visit_Assign(self, node):
+        targets = [self.visit(x) for x in node.targets]
+        value = self.visit(node.value)
+        return self.code('{} = {};'.format(' = '.join(targets), value))
+
     def visit_Expr(self, node):
         # print special case
         if isinstance(node.value, ast.Call) and node.value.func.id == 'print':
