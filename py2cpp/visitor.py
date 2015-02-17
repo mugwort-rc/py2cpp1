@@ -26,3 +26,6 @@ class SourceGenerator(ast.NodeVisitor):
 
     def visit_Str(self, node):
         return '"{}"'.format(node.s)
+
+    def visit_Num(self, node):
+        return '{}'.format(node.n)

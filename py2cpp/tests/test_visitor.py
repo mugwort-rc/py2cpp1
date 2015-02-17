@@ -277,3 +277,8 @@ def test_Str():
     node = gen_Str()
     result = generate(node)
     assert result == '"str"'
+
+def test_Num():
+    node = gen_Num()
+    result = generate(node)
+    assert result == '72'
