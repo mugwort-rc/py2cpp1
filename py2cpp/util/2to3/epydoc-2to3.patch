@@ -1,0 +1,2369 @@
+--- epydoc/apidoc.py	(original)
++++ epydoc/apidoc.py	(refactored)
+@@ -41,7 +41,7 @@
+ import types, re, os.path, pickle
+ from epydoc import log
+ import epydoc
+-import __builtin__
++import builtins
+ from epydoc.compat import * # Backwards compatibility
+ from epydoc.util import decode_with_backslashreplace, py_src_filename
+ import epydoc.markup.pyval_repr
+@@ -111,7 +111,7 @@
+         for piece in pieces:
+             if isinstance(piece, DottedName):
+                 self._identifiers += piece._identifiers
+-            elif isinstance(piece, basestring):
++            elif isinstance(piece, str):
+                 for subpiece in piece.split('.'):
+                     if piece not in self._ok_identifiers:
+                         if not self._IDENTIFIER_RE.match(subpiece):
+@@ -129,7 +129,7 @@
+         self._identifiers = tuple(self._identifiers)
+ 
+     def __repr__(self):
+-        idents = [`ident` for ident in self._identifiers]
++        idents = [repr(ident) for ident in self._identifiers]
+         return 'DottedName(' + ', '.join(idents) + ')'
+ 
+     def __str__(self):
+@@ -147,7 +147,7 @@
+         Return a new C{DottedName} whose identifier sequence is formed
+         by adding C{other}'s identifier sequence to C{self}'s.
+         """
+-        if isinstance(other, (basestring, DottedName)):
++        if isinstance(other, (str, DottedName)):
+             return DottedName(self, other)
+         else:
+             return DottedName(self, *other)
+@@ -157,7 +157,7 @@
+         Return a new C{DottedName} whose identifier sequence is formed
+         by adding C{self}'s identifier sequence to C{other}'s.
+         """
+-        if isinstance(other, (basestring, DottedName)):
++        if isinstance(other, (str, DottedName)):
+             return DottedName(other, self)
+         else:
+             return DottedName(*(list(other)+[self]))
+@@ -169,7 +169,7 @@
+         identifiers selected by the slice.  If C{i} is an empty slice,
+         return an empty list (since empty C{DottedName}s are not valid).
+         """
+-        if isinstance(i, types.SliceType):
++        if isinstance(i, slice):
+             pieces = self._identifiers[i.start:i.stop]
+             if pieces: return DottedName(pieces)
+             else: return []
+@@ -277,7 +277,7 @@
+         self.name = name
+     def __repr__(self):
+         return '<%s>' % self.name
+-    def __nonzero__(self):
++    def __bool__(self):
+         raise ValueError('Sentinel value <%s> can not be used as a boolean' %
+                          self.name)
+ 
+@@ -974,17 +974,17 @@
+         imports = filters.get('imports', True)
+         private = filters.get('private', True)
+         if variables and imports and private:
+-            return self.variables.values() # list the common case first.
++            return list(self.variables.values()) # list the common case first.
+         elif not variables:
+             return []
+         elif not imports and not private:
+-            return [v for v in self.variables.values() if
++            return [v for v in list(self.variables.values()) if
+                     v.is_imported != True and v.is_public != False]
+         elif not private:
+-            return [v for v in self.variables.values() if
++            return [v for v in list(self.variables.values()) if
+                     v.is_public != False]
+         elif not imports:
+-            return [v for v in self.variables.values() if
++            return [v for v in list(self.variables.values()) if
+                     v.is_imported != True]
+         assert 0, 'this line should be unreachable'
+ 
+@@ -1008,7 +1008,7 @@
+                 elif '*' in ident:
+                     regexp = re.compile('^%s$' % ident.replace('*', '(.*)'))
+                     # sort within matching group?
+-                    for name, var_doc in unsorted.items():
++                    for name, var_doc in list(unsorted.items()):
+                         if regexp.match(name):
+                             self.sorted_variables.append(unsorted.pop(name))
+                             unused_idents.discard(ident)
+@@ -1019,7 +1019,7 @@
+                     
+     
+         # Add any remaining variables in alphabetical order.
+-        var_docs = unsorted.items()
++        var_docs = list(unsorted.items())
+         var_docs.sort()
+         for name, var_doc in var_docs:
+             self.sorted_variables.append(var_doc)
+@@ -1096,7 +1096,7 @@
+         Issue a warning for any @group items that were not used by
+         L{_init_grouping()}.
+         """
+-        for (group, unused_idents) in self._unused_groups.items():
++        for (group, unused_idents) in list(self._unused_groups.items()):
+             for ident in unused_idents:
+                 log.warning("@group %s: %s.%s not found" %
+                             (group, self.canonical_name, ident))
+@@ -1322,7 +1322,7 @@
+                     base.proxy_for is not None):
+                     self._report_bad_base(base)
+         w = [warn_about_bad_bases]*len(bases)
+-        return self._c3_merge([[self]] + map(ClassDoc._c3_mro, bases, w) +
++        return self._c3_merge([[self]] + list(map(ClassDoc._c3_mro, bases, w)) +
+                               [list(bases)])
+ 
+     def _report_bad_base(self, base):
+@@ -1866,7 +1866,7 @@
+         @type name: C{str} or L{DottedName}
+         @type context: L{APIDoc}
+         """
+-        if isinstance(name, basestring):
++        if isinstance(name, str):
+             name = re.sub(r'\(.*\)$', '', name.strip())
+             if re.match('^([a-zA-Z_]\w*)(\.[a-zA-Z_]\w*)*$', name):
+                 name = DottedName(name)
+@@ -1942,7 +1942,7 @@
+             if not isinstance(doc, ModuleDoc):
+                 continue
+ 
+-            for var in doc.variables.values():
++            for var in list(doc.variables.values()):
+                 if not isinstance(var.value, ClassDoc):
+                     continue
+ 
+@@ -2026,7 +2026,7 @@
+         # from these `funcid`s to `RoutineDoc`s.
+         self._update_funcid_to_doc(profile_stats)
+         
+-        for callee, (cc, nc, tt, ct, callers) in profile_stats.stats.items():
++        for callee, (cc, nc, tt, ct, callers) in list(profile_stats.stats.items()):
+             callee = self._funcid_to_doc.get(callee)
+             if callee is None: continue
+             for caller in callers:
+@@ -2106,7 +2106,7 @@
+     s = '%s [%s]' % (name, backpointers[pyid])
+ 
+     # Only print non-empty fields:
+-    fields = [field for field in api_doc.__dict__.keys()
++    fields = [field for field in list(api_doc.__dict__.keys())
+               if (field in include or
+                   (getattr(api_doc, field) is not UNKNOWN
+                    and field not in exclude))]
+@@ -2114,7 +2114,7 @@
+         fields = [field for field in dir(api_doc)
+                   if field in include]
+     else:
+-        fields = [field for field in api_doc.__dict__.keys()
++        fields = [field for field in list(api_doc.__dict__.keys())
+                   if (getattr(api_doc, field) is not UNKNOWN
+                       and field not in exclude)]
+     fields.sort()
+@@ -2124,15 +2124,15 @@
+         if doublespace: s += '\n |'
+         s += '\n +- %s' % field
+ 
+-        if (isinstance(fieldval, types.ListType) and
++        if (isinstance(fieldval, list) and
+             len(fieldval)>0 and
+             isinstance(fieldval[0], APIDoc)):
+             s += _pp_list(api_doc, fieldval, doublespace, depth,
+                           exclude, include, backpointers,
+                           (field is fields[-1]))
+-        elif (isinstance(fieldval, types.DictType) and
++        elif (isinstance(fieldval, dict) and
+               len(fieldval)>0 and 
+-              isinstance(fieldval.values()[0], APIDoc)):
++              isinstance(list(fieldval.values())[0], APIDoc)):
+             s += _pp_dict(api_doc, fieldval, doublespace, 
+                           depth, exclude, include, backpointers,
+                           (field is fields[-1]))
+@@ -2162,7 +2162,7 @@
+ 
+ def _pp_dict(api_doc, dict, doublespace, depth, exclude, include,
+               backpointers, is_last):
+-    items = dict.items()
++    items = list(dict.items())
+     items.sort()
+     line1 = (is_last and ' ') or '|'
+     s = ''
+@@ -2193,7 +2193,7 @@
+         return pp_apidoc(val, doublespace, depth-1, exclude,
+                          include, backpointers)
+     elif isinstance(val, markup.ParsedDocstring):
+-        valrepr = `val.to_plaintext(None)`
++        valrepr = repr(val.to_plaintext(None))
+         if len(valrepr) < 40: return valrepr
+         else: return valrepr[:37]+'...'
+     else:
+--- epydoc/checker.py	(original)
++++ epydoc/checker.py	(refactored)
+@@ -189,7 +189,7 @@
+             self._check(checks)
+         log.end_progress()
+ 
+-        for (warning, docs) in self._warnings.items():
++        for (warning, docs) in list(self._warnings.items()):
+             docs = sorted(docs)
+             docnames = '\n'.join(['  - %s' % self._name(d) for d in docs])
+             log.warning('%s:\n%s' % (warning, docnames))
+@@ -206,7 +206,7 @@
+             if not isinstance(d, GenericValueDoc): docs.add(d)
+         for doc in valdocs:
+             if isinstance(doc, NamespaceDoc):
+-                for d in doc.variables.values():
++                for d in list(doc.variables.values()):
+                     if isinstance(d.value, GenericValueDoc): docs.add(d)
+ 
+         for i, doc in enumerate(sorted(docs)):
+@@ -333,7 +333,7 @@
+             else:
+                 args_with_descr = []
+                 for arg, descr in doc.arg_descrs:
+-                    if isinstance(arg, basestring):
++                    if isinstance(arg, str):
+                         args_with_descr.append(arg)
+                     else:
+                         args_with_descr += arg
+--- epydoc/cli.py	(original)
++++ epydoc/cli.py	(refactored)
+@@ -73,7 +73,7 @@
+ from epydoc.util import plaintext_to_html
+ from epydoc.apidoc import UNKNOWN
+ from epydoc.compat import *
+-import ConfigParser
++import configparser
+ from epydoc.docwriter.html_css import STYLESHEETS as CSS_STYLESHEETS
+ 
+ # This module is only available if Docutils are in the system
+@@ -113,7 +113,7 @@
+         'The following built-in CSS stylesheets are available:\n' +
+         '\n'.join(['  %10s: %s' % (key, descr)
+                    for (key, (sheet, descr))
+-                   in CSS_STYLESHEETS.items()])),
++                   in list(CSS_STYLESHEETS.items())])),
+     #'checks': textwrap.dedent('''\
+     #
+     #    '''),
+@@ -122,7 +122,7 @@
+ 
+ HELP_TOPICS['topics'] = wordwrap(
+     'Epydoc can provide additional help for the following topics: ' +
+-    ', '.join(['%r' % topic for topic in HELP_TOPICS.keys()]))
++    ', '.join(['%r' % topic for topic in list(HELP_TOPICS.keys())]))
+     
+ ######################################################################
+ #{ Argument & Config File Parsing
+@@ -423,16 +423,16 @@
+     # --help [topic]
+     if options.action == 'help':
+         names = set([n.lower() for n in names])
+-        for (topic, msg) in HELP_TOPICS.items():
++        for (topic, msg) in list(HELP_TOPICS.items()):
+             if topic.lower() in names:
+-                print '\n' + msg.rstrip() + '\n'
++                print('\n' + msg.rstrip() + '\n')
+                 sys.exit(0)
+         optparser.print_help()
+         sys.exit(0)
+ 
+     # Print version message, if requested.
+     if options.action == 'version':
+-        print version
++        print(version)
+         sys.exit(0)
+     
+     # Process any config files.
+@@ -440,7 +440,7 @@
+         try:
+             parse_configfiles(options.configfiles, options, names)
+         except (KeyboardInterrupt,SystemExit): raise
+-        except Exception, e:
++        except Exception as e:
+             if len(options.configfiles) == 1:
+                 cf_name = 'config file %s' % options.configfiles[0]
+             else:
+@@ -504,7 +504,7 @@
+     return options, names
+ 
+ def parse_configfiles(configfiles, options, names):
+-    configparser = ConfigParser.ConfigParser()
++    configparser = configparser.ConfigParser()
+     # ConfigParser.read() silently ignores errors, so open the files
+     # manually (since we want to notify the user of any errors).
+     for configfile in configfiles:
+@@ -681,7 +681,7 @@
+         elif options.action == 'pdf': stages += [60,50]
+         elif options.action == 'check': stages += [10]
+         elif options.action == 'pickle': stages += [10]
+-        else: raise ValueError, '%r not supported' % options.action
++        else: raise ValueError('%r not supported' % options.action)
+         if options.parse and not options.introspect:
+             del stages[1] # no merging
+         if options.introspect and not options.parse:
+@@ -712,7 +712,7 @@
+     if xlink is not None:
+         try:
+             xlink.ApiLinkReader.read_configuration(options, problematic=False)
+-        except Exception, exc:
++        except Exception as exc:
+             log.error("Error while configuring external API linking: %s: %s"
+                 % (exc.__class__.__name__, exc))
+ 
+@@ -772,7 +772,7 @@
+             for filename in options.pstat_files[1:]:
+                 profile_stats.add(filename)
+         except KeyboardInterrupt: raise
+-        except Exception, e:
++        except Exception as e:
+             log.error("Error reading pstat file: %s" % e)
+             profile_stats = None
+         if profile_stats is not None:
+@@ -790,7 +790,7 @@
+     elif options.action == 'pickle':
+         write_pickle(docindex, options)
+     else:
+-        print >>sys.stderr, '\nUnsupported action %s!' % options.action
++        print('\nUnsupported action %s!' % options.action, file=sys.stderr)
+ 
+     # If we suppressed docstring warnings, then let the user know.
+     if logger is not None and logger.suppressed_docstring_warning:
+@@ -852,7 +852,7 @@
+     """Helper for pickling, which allows us to save and restore UNKNOWN,
+     which is required to be identical to apidoc.UNKNOWN."""
+     if identifier == 'UNKNOWN': return UNKNOWN
+-    else: raise pickle.UnpicklingError, 'Invalid persistent id'
++    else: raise pickle.UnpicklingError('Invalid persistent id')
+ 
+ _RERUN_LATEX_RE = re.compile(r'(?im)^LaTeX\s+Warning:\s+Label\(s\)\s+may'
+                              r'\s+have\s+changed.\s+Rerun')
+@@ -925,13 +925,13 @@
+                     'ps2pdf -sPAPERSIZE#letter -dMaxSubsetPct#100 '
+                     '-dSubsetFonts#true -dCompatibilityLevel#1.2 '
+                     '-dEmbedAllFonts#true api.ps api.pdf')
+-        except RunSubprocessError, e:
++        except RunSubprocessError as e:
+             if running == 'latex':
+                 e.out = re.sub(r'(?sm)\A.*?!( LaTeX Error:)?', r'', e.out)
+                 e.out = re.sub(r'(?sm)\s*Type X to quit.*', '', e.out)
+                 e.out = re.sub(r'(?sm)^! Emergency stop.*', '', e.out)
+             log.error("%s failed: %s" % (running, (e.out+e.err).lstrip()))
+-        except OSError, e:
++        except OSError as e:
+             log.error("%s failed: %s" % (running, e))
+     finally:
+         os.chdir(oldpath)
+@@ -945,9 +945,9 @@
+     for apidoc in docindex.root:
+         s += plaintext_writer.write(apidoc)
+     log.end_progress()
+-    if isinstance(s, unicode):
++    if isinstance(s, str):
+         s = s.encode('ascii', 'backslashreplace')
+-    print s
++    print(s)
+ 
+ def check_docs(docindex, options):
+     from epydoc.checker import DocChecker
+@@ -968,17 +968,17 @@
+     except SystemExit:
+         raise
+     except KeyboardInterrupt:
+-        print '\n\n'
+-        print >>sys.stderr, 'Keyboard interrupt.'
++        print('\n\n')
++        print('Keyboard interrupt.', file=sys.stderr)
+     except:
+         if options.debug: raise
+-        print '\n\n'
++        print('\n\n')
+         exc_info = sys.exc_info()
+-        if isinstance(exc_info[0], basestring): e = exc_info[0]
++        if isinstance(exc_info[0], str): e = exc_info[0]
+         else: e = exc_info[1]
+-        print >>sys.stderr, ('\nUNEXPECTED ERROR:\n'
+-                             '%s\n' % (str(e) or e.__class__.__name__))
+-        print >>sys.stderr, 'Use --debug to see trace information.'
++        print(('\nUNEXPECTED ERROR:\n'
++                             '%s\n' % (str(e) or e.__class__.__name__)), file=sys.stderr)
++        print('Use --debug to see trace information.', file=sys.stderr)
+         sys.exit(3)
+     
+ def _profile():
+@@ -986,7 +986,7 @@
+     if PROFILER == 'hotshot':
+         try: import hotshot, hotshot.stats
+         except ImportError:
+-            print >>sys.stderr, "Could not import profile module!"
++            print("Could not import profile module!", file=sys.stderr)
+             return
+         try:
+             prof = hotshot.Profile('hotshot.out')
+@@ -995,7 +995,7 @@
+             pass
+         prof.close()
+         # Convert profile.hotshot -> profile.out
+-        print 'Consolidating hotshot profiling info...'
++        print('Consolidating hotshot profiling info...')
+         hotshot.stats.load('hotshot.out').dump_stats('profile.out')
+ 
+     # Standard 'profile' profiler.
+@@ -1006,7 +1006,7 @@
+         except ImportError:
+             try: from profile import Profile
+             except ImportError:
+-                print >>sys.stderr, "Could not import profile module!"
++                print("Could not import profile module!", file=sys.stderr)
+                 return
+ 
+         # There was a bug in Python 2.4's profiler.  Check if it's
+@@ -1015,8 +1015,8 @@
+         #                         2005-September/047099.html>)
+         if (hasattr(Profile, 'dispatch') and
+             Profile.dispatch['c_exception'] is
+-            Profile.trace_dispatch_exception.im_func):
+-            trace_dispatch_return = Profile.trace_dispatch_return.im_func
++            Profile.trace_dispatch_exception.__func__):
++            trace_dispatch_return = Profile.trace_dispatch_return.__func__
+             Profile.dispatch['c_exception'] = trace_dispatch_return
+         try:
+             prof = Profile()
+@@ -1026,7 +1026,7 @@
+         prof.dump_stats('profile.out')
+ 
+     else:
+-        print >>sys.stderr, 'Unknown profiler %s' % PROFILER
++        print('Unknown profiler %s' % PROFILER, file=sys.stderr)
+         return
+     
+ ######################################################################
+@@ -1094,11 +1094,11 @@
+         # Colors
+         set_fg = self._tigetstr('setf')
+         if set_fg:
+-            for i,color in zip(range(len(self._COLORS)), self._COLORS):
++            for i,color in zip(list(range(len(self._COLORS))), self._COLORS):
+                 setattr(self, color, curses.tparm(set_fg, i) or '')
+         set_fg_ansi = self._tigetstr('setaf')
+         if set_fg_ansi:
+-            for i,color in zip(range(len(self._ANSICOLORS)), self._ANSICOLORS):
++            for i,color in zip(list(range(len(self._ANSICOLORS))), self._ANSICOLORS):
+                 setattr(self, color, curses.tparm(set_fg_ansi, i) or '')
+ 
+     def _tigetstr(self, cap_name):
+@@ -1217,7 +1217,7 @@
+             # then make room for the message.
+             if self._progress_mode == 'simple-bar':
+                 if self._progress is not None:
+-                    print
++                    print()
+                     self._progress = None
+             if self._progress_mode == 'bar':
+                 sys.stdout.write(self.term.CLEAR_LINE)
+@@ -1235,7 +1235,7 @@
+         
+         if self._progress_mode == 'list':
+             if message:
+-                print '[%3d%%] %s' % (100*percent, message)
++                print('[%3d%%] %s' % (100*percent, message))
+                 sys.stdout.flush()
+                 
+         elif self._progress_mode == 'bar':
+@@ -1307,7 +1307,7 @@
+         self._progress_start_time = time.time()
+         self._progress_header = header
+         if self._progress_mode != 'hide' and header:
+-            print self.term.BOLD + header + self.term.NORMAL
++            print(self.term.BOLD + header + self.term.NORMAL)
+ 
+     def end_progress(self):
+         self.progress(1.)
+@@ -1317,24 +1317,24 @@
+                 sys.stdout.write((self.term.CLEAR_EOL + '\n')*2 +
+                                  self.term.CLEAR_EOL + self.term.UP*2)
+         if self._progress_mode == 'simple-bar':
+-            print ']'
++            print(']')
+         self._progress = None
+         self._task_times.append( (time.time()-self._progress_start_time,
+                                   self._progress_header) )
+ 
+     def print_times(self):
+-        print
+-        print 'Timing summary:'
++        print()
++        print('Timing summary:')
+         total = sum([time for (time, task) in self._task_times])
+         max_t = max([time for (time, task) in self._task_times])
+         for (time, task) in self._task_times:
+             task = task[:31]
+-            print '  %s%s %7.1fs' % (task, '.'*(35-len(task)), time),
++            print('  %s%s %7.1fs' % (task, '.'*(35-len(task)), time), end=' ')
+             if self.term.COLS > 55:
+-                print '|'+'=' * int((self.term.COLS-53) * time / max_t)
++                print('|'+'=' * int((self.term.COLS-53) * time / max_t))
+             else:
+-                print
+-        print
++                print()
++        print()
+ 
+ class UnifiedProgressConsoleLogger(ConsoleLogger):
+     def __init__(self, verbosity, stages, progress_mode=None):
+--- epydoc/docbuilder.py	(original)
++++ epydoc/docbuilder.py	(refactored)
+@@ -67,7 +67,7 @@
+ ## Imports
+ ######################################################################
+ 
+-import sys, os, os.path, __builtin__, imp, re, inspect
++import sys, os, os.path, builtins, imp, re, inspect
+ from epydoc.apidoc import *
+ from epydoc.docintrospecter import introspect_docs
+ from epydoc.docparser import parse_docs, ParseError
+@@ -99,7 +99,7 @@
+                 and re.compile(exclude_introspect) or None)
+             self._parse_regexp = (exclude_parse
+                 and re.compile(exclude_parse) or None)
+-        except Exception, exc:
++        except Exception as exc:
+             log.error('Error in regular expression pattern: %s' % exc)
+             raise
+ 
+@@ -198,7 +198,7 @@
+         options = BuildOptions(parse=parse, introspect=introspect,
+             exclude_introspect=exclude_introspect, exclude_parse=exclude_parse,
+             add_submodules=add_submodules)
+-    except Exception, e:
++    except Exception as e:
+         # log.error already reported by constructor.
+         return None
+ 
+@@ -276,7 +276,7 @@
+         # the value's variables' docstrings
+         if (isinstance(val_doc, NamespaceDoc) and
+             val_doc.variables not in (None, UNKNOWN)):
+-            for var_doc in val_doc.variables.values():
++            for var_doc in list(val_doc.variables.values()):
+                 # Now we have a chance to propagate the defining module
+                 # to objects for which introspection is not possible,
+                 # such as properties.
+@@ -343,7 +343,7 @@
+     # Collect (introspectdoc, parsedoc) pairs for each item.
+     doc_pairs = []
+     for item in items:
+-        if isinstance(item, basestring):
++        if isinstance(item, str):
+             if is_module_file(item):
+                 doc_pairs.append(_get_docs_from_module_file(
+                     item, options, progress_estimator))
+@@ -412,7 +412,7 @@
+     introspect_error = parse_error = None
+     try:
+         introspect_doc = introspect_docs(value=obj)
+-    except ImportError, e:
++    except ImportError as e:
+         log.error(e)
+         return (None, None)
+     if options.parse:
+@@ -447,14 +447,14 @@
+     if options.must_introspect(name):
+         try:
+             introspect_doc = introspect_docs(name=name)
+-        except ImportError, e:
++        except ImportError as e:
+             introspect_error = str(e)
+     if options.must_parse(name):
+         try:
+             parse_doc = parse_docs(name=name)
+-        except ParseError, e:
++        except ParseError as e:
+             parse_error = str(e)
+-        except ImportError, e:
++        except ImportError as e:
+             # If we get here, then there' probably no python source
+             # available; don't bother to generate a warnining.
+             pass
+@@ -478,14 +478,14 @@
+             introspect_doc = introspect_docs(filename=filename, is_script=True)
+             if introspect_doc.canonical_name is UNKNOWN:
+                 introspect_doc.canonical_name = munge_script_name(filename)
+-        except ImportError, e:
++        except ImportError as e:
+             introspect_error = str(e)
+     if options.parse:
+         try:
+             parse_doc = parse_docs(filename=filename, is_script=True)
+-        except ParseError, e:
++        except ParseError as e:
+             parse_error = str(e)
+-        except ImportError, e:
++        except ImportError as e:
+             parse_error = str(e)
+                 
+     # Report any errors we encountered.
+@@ -541,15 +541,15 @@
+                 filename=filename, context=parent_docs[0])
+             if introspect_doc.canonical_name is UNKNOWN:
+                 introspect_doc.canonical_name = modulename
+-        except ImportError, e:
++        except ImportError as e:
+             introspect_error = str(e)
+     if src_file_available and options.must_parse(modulename):
+         try:
+             parse_doc = parse_docs(
+                 filename=filename, context=parent_docs[1])
+-        except ParseError, e:
++        except ParseError as e:
+             parse_error = str(e)
+-        except ImportError, e:
++        except ImportError as e:
+             parse_error = str(e)
+ 
+     # Report any errors we encountered.
+@@ -586,11 +586,11 @@
+                     subpackage_dirs.add(filename)
+ 
+     # Update our estimate of the number of modules in this package.
+-    progress_estimator.revise_estimate(item, module_filenames.items(),
++    progress_estimator.revise_estimate(item, list(module_filenames.items()),
+                                        subpackage_dirs)
+ 
+     docs = [pkg_docs]
+-    for module_filename in module_filenames.values():
++    for module_filename in list(module_filenames.values()):
+         d = _get_docs_from_module_file(
+             module_filename, options, progress_estimator, pkg_docs)
+         docs.append(d)
+@@ -868,8 +868,8 @@
+         _merge_posargs_and_defaults(introspect_doc, parse_doc, path)
+     
+     # Merge the two api_doc's attributes.
+-    for attrib in set(introspect_doc.__dict__.keys() +
+-                      parse_doc.__dict__.keys()):
++    for attrib in set(list(introspect_doc.__dict__.keys()) +
++                      list(parse_doc.__dict__.keys())):
+         # Be sure not to merge any private attributes (especially
+         # __mergeset or __has_been_hashed!)
+         if attrib.startswith('_'): continue
+@@ -934,7 +934,7 @@
+ 
+ def merge_variables(varlist1, varlist2, precedence, cyclecheck, path):
+     # Merge all variables that are in both sets.
+-    for varname, var1 in varlist1.items():
++    for varname, var1 in list(varlist1.items()):
+         var2 = varlist2.get(varname)
+         if var2 is not None:
+             var = merge_docs(var1, var2, cyclecheck, path+'.'+varname)
+@@ -942,7 +942,7 @@
+             varlist2[varname] = var
+ 
+     # Copy any variables that are not in varlist1 over.
+-    for varname, var in varlist2.items():
++    for varname, var in list(varlist2.items()):
+         varlist1.setdefault(varname, var)
+ 
+     return varlist1
+@@ -1135,7 +1135,7 @@
+         val_doc.canonical_name is not UNKNOWN):
+         # If this is the first time we've seen val_doc, and it
+         # already has a name, then don't change that name.
+-        _name_scores[val_doc] = sys.maxint
++        _name_scores[val_doc] = sys.maxsize
+         name = val_doc.canonical_name
+         score = 0
+     else:
+@@ -1148,7 +1148,7 @@
+ 
+     # Recurse to any contained values.
+     if isinstance(val_doc, NamespaceDoc):
+-        for var_doc in val_doc.variables.values():
++        for var_doc in list(val_doc.variables.values()):
+             # Set the variable's canonical name.
+             varname = DottedName(name, var_doc.name)
+             var_doc.canonical_name = varname
+@@ -1252,7 +1252,7 @@
+     for base_class in list(class_doc.mro(warn_about_bad_bases=True)):
+         if base_class == class_doc: continue
+         if base_class.variables is UNKNOWN: continue
+-        for name, var_doc in base_class.variables.items():
++        for name, var_doc in list(base_class.variables.items()):
+             if ( not (name.startswith('__') and not name.endswith('__')) and
+                  base_class == var_doc.container and
+                  name in class_doc.variables and 
+@@ -1274,7 +1274,7 @@
+ 
+         # Inherit any variables.
+         if base_class.variables is UNKNOWN: continue
+-        for name, var_doc in base_class.variables.items():
++        for name, var_doc in list(base_class.variables.items()):
+             # If it's a __private variable, then don't inherit it.
+             if name.startswith('__') and not name.endswith('__'):
+                 continue
+--- epydoc/docintrospecter.py	(original)
++++ epydoc/docintrospecter.py	(refactored)
+@@ -37,7 +37,7 @@
+ # For extracting encoding for docstrings:
+ import epydoc.docparser
+ # Builtin values
+-import __builtin__
++import builtins
+ # Backwards compatibility
+ from epydoc.compat import * 
+ 
+@@ -196,11 +196,11 @@
+ 
+     # Record the module's docformat
+     if hasattr(module, '__docformat__'):
+-        module_doc.docformat = unicode(module.__docformat__)
++        module_doc.docformat = str(module.__docformat__)
+                                   
+     # Record the module's filename
+     if hasattr(module, '__file__'):
+-        try: module_doc.filename = unicode(module.__file__)
++        try: module_doc.filename = str(module.__file__)
+         except KeyboardInterrupt: raise
+         except: pass
+         if module_doc.filename is not UNKNOWN:
+@@ -222,7 +222,7 @@
+     # package; so set is_package=True and record its __path__.
+     if hasattr(module, '__path__'):
+         module_doc.is_package = True
+-        try: module_doc.path = [unicode(p) for p in module.__path__]
++        try: module_doc.path = [str(p) for p in module.__path__]
+         except KeyboardInterrupt: raise
+         except: pass
+     else:
+@@ -388,7 +388,7 @@
+     class_doc.variables = {}
+     if hasattr(cls, '__dict__'):
+         private_prefix = '_%s__' % getattr(cls, '__name__', '<none>')
+-        for child_name, child in cls.__dict__.items():
++        for child_name, child in list(cls.__dict__.items()):
+             if (child_name in base_children
+                 and base_children[child_name] == child):
+                 continue
+@@ -418,11 +418,11 @@
+     
+     # Extract the underying function
+     if isinstance(routine, MethodType):
+-        func = routine.im_func
++        func = routine.__func__
+     elif isinstance(routine, staticmethod):
+         func = routine.__get__(0)
+     elif isinstance(routine, classmethod):
+-        func = routine.__get__(0).im_func
++        func = routine.__get__(0).__func__
+     else:
+         func = routine
+ 
+@@ -447,13 +447,13 @@
+                 routine_doc.posarg_defaults[i+offset] = default_val
+ 
+         # If it's a bound method, then strip off the first argument.
+-        if isinstance(routine, MethodType) and routine.im_self is not None:
++        if isinstance(routine, MethodType) and routine.__self__ is not None:
+             routine_doc.posargs = routine_doc.posargs[1:]
+             routine_doc.posarg_defaults = routine_doc.posarg_defaults[1:]
+ 
+         # Set the routine's line number.
+         if hasattr(func, 'func_code'):
+-            routine_doc.lineno = func.func_code.co_firstlineno
++            routine_doc.lineno = func.__code__.co_firstlineno
+ 
+     else:
+         # [XX] I should probably use UNKNOWN here??
+@@ -561,10 +561,10 @@
+     docstring = getattr(value, '__doc__', None)
+     if docstring is None:
+         return None
+-    elif isinstance(docstring, unicode):
++    elif isinstance(docstring, str):
+         return docstring
+     elif isinstance(docstring, str):
+-        try: return unicode(docstring, 'ascii')
++        try: return str(docstring, 'ascii')
+         except UnicodeDecodeError:
+             if module_name is None:
+                 module_name = get_containing_module(value)
+@@ -573,7 +573,7 @@
+                     module = get_value_from_name(module_name)
+                     filename = py_src_filename(module.__file__)
+                     encoding = epydoc.docparser.get_module_encoding(filename)
+-                    return unicode(docstring, encoding)
++                    return str(docstring, encoding)
+                 except KeyboardInterrupt: raise
+                 except Exception: pass
+             if hasattr(value, '__name__'): name = value.__name__
+@@ -581,7 +581,7 @@
+             log.warning("%s's docstring is not a unicode string, but it "
+                         "contains non-ascii data -- treating it as "
+                         "latin-1." % name)
+-            return unicode(docstring, 'latin-1')
++            return str(docstring, 'latin-1')
+         return None
+     elif value is BuiltinMethodType:
+         # Don't issue a warning for this special case.
+@@ -630,15 +630,15 @@
+             dotted_name = DottedName(value.__module__, value.__name__,
+                                      strict=strict)
+             
+-    elif (inspect.ismethod(value) and value.im_self is not None and
+-          value.im_class is ClassType and
++    elif (inspect.ismethod(value) and value.__self__ is not None and
++          value.__self__.__class__ is ClassType and
+           not value.__name__.startswith('<')): # class method.
+-        class_name = get_canonical_name(value.im_self)
++        class_name = get_canonical_name(value.__self__)
+         if class_name is UNKNOWN: return UNKNOWN
+         dotted_name = DottedName(class_name, value.__name__, strict=strict)
+     elif (inspect.ismethod(value) and
+           not value.__name__.startswith('<')):
+-        class_name = get_canonical_name(value.im_class)
++        class_name = get_canonical_name(value.__self__.__class__)
+         if class_name is UNKNOWN: return UNKNOWN
+         dotted_name = DottedName(class_name, value.__name__, strict=strict)
+     elif (isinstance(value, FunctionType) and
+@@ -689,11 +689,11 @@
+         return DottedName(value.__name__)
+     elif isclass(value):
+         return DottedName(value.__module__)
+-    elif (inspect.ismethod(value) and value.im_self is not None and
+-          value.im_class is ClassType): # class method.
+-        return DottedName(value.im_self.__module__)
++    elif (inspect.ismethod(value) and value.__self__ is not None and
++          value.__self__.__class__ is ClassType): # class method.
++        return DottedName(value.__self__.__module__)
+     elif inspect.ismethod(value):
+-        return DottedName(value.im_class.__module__)
++        return DottedName(value.__self__.__class__.__module__)
+     elif inspect.isroutine(value):
+         module = _find_function_module(value)
+         if module is None: return None
+@@ -720,10 +720,10 @@
+     # a couple special cases (including using epydoc to document
+     # itself).  In particular, if a module gets loaded twice, using
+     # two different names for the same file, then this helps.
+-    for module in sys.modules.values():
++    for module in list(sys.modules.values()):
+         if (hasattr(module, '__dict__') and
+             hasattr(func, 'func_globals') and
+-            func.func_globals is module.__dict__):
++            func.__globals__ is module.__dict__):
+             return module.__name__
+     return None
+ 
+@@ -863,8 +863,8 @@
+     # the requested name refers to a builtin.
+     try:
+         module = _import(name[0])
+-    except ImportError, e:
+-        if globs is None: globs = __builtin__.__dict__
++    except ImportError as e:
++        if globs is None: globs = builtins.__dict__
+         if name[0] in globs:
+             try: return _lookup(globs[name[0]], name[1:])
+             except: raise e
+@@ -900,7 +900,7 @@
+     # explicitly store sys.path.
+     old_sys = sys.__dict__.copy()
+     old_sys_path = sys.path[:]
+-    old_builtins = __builtin__.__dict__.copy()
++    old_builtins = builtins.__dict__.copy()
+ 
+     # Add the current directory to sys.path, in case they're trying to
+     # import a module by name that resides in the current directory.
+@@ -935,8 +935,8 @@
+             raise ImportError(estr)
+     finally:
+         # Restore the important values that we saved.
+-        __builtin__.__dict__.clear()
+-        __builtin__.__dict__.update(old_builtins)
++        builtins.__dict__.clear()
++        builtins.__dict__.update(old_builtins)
+         sys.__dict__.clear()
+         sys.__dict__.update(old_sys)
+         sys.path = old_sys_path
+@@ -983,7 +983,7 @@
+     def readline(self, size=0): return ''
+     def readlines(self, sizehint=0): return []
+     def seek(self, offset, whence=0): pass
+-    def tell(self): return 0L
++    def tell(self): return 0
+     def truncate(self, size=0): pass
+     def write(self, str): pass
+     def writelines(self, sequence): pass
+--- epydoc/docparser.py	(original)
++++ epydoc/docparser.py	(refactored)
+@@ -64,7 +64,7 @@
+ # API documentation encoding:
+ from epydoc.apidoc import *
+ # For looking up the docs of builtins:
+-import __builtin__, exceptions
++import builtins, exceptions
+ import epydoc.docintrospecter 
+ # Misc utility functions:
+ from epydoc.util import *
+@@ -227,7 +227,7 @@
+         # Use a python source version, if possible.
+         if not is_script:
+             try: filename = py_src_filename(filename)
+-            except ValueError, e: raise ImportError('%s' % e)
++            except ValueError as e: raise ImportError('%s' % e)
+ 
+         # Check the cache, first.
+         if filename in _moduledoc_cache:
+@@ -276,12 +276,12 @@
+         # Tokenize & process the contents of the module's source file.
+         try:
+             process_file(module_doc)
+-        except tokenize.TokenError, e:
++        except tokenize.TokenError as e:
+             msg, (srow, scol) = e.args
+             raise ParseError('Error during parsing: %s '
+                              '(%s, line %d, char %d)' %
+                              (msg, module_doc.filename, srow, scol))
+-        except IndentationError, e:
++        except IndentationError as e:
+             raise ParseError('Error during parsing: %s (%s)' %
+                              (e, module_doc.filename))
+ 
+@@ -322,7 +322,7 @@
+     if toktree is not None:
+         try:
+             public_names = set(parse_string_list(toktree))
+-            for name, var_doc in module_doc.variables.items():
++            for name, var_doc in list(module_doc.variables.items()):
+                 if name in public_names:
+                     var_doc.is_public = True
+                     if not isinstance(var_doc, ModuleDoc):
+@@ -331,7 +331,7 @@
+                     var_doc.is_public = False
+         except ParseError:
+             # If we couldn't parse the list, give precedence to introspection.
+-            for name, var_doc in module_doc.variables.items():
++            for name, var_doc in list(module_doc.variables.items()):
+                 if not isinstance(var_doc, ModuleDoc):
+                     var_doc.is_imported = UNKNOWN
+         del module_doc.variables['__all__']
+@@ -442,7 +442,7 @@
+         fp, filename, (s,m,typ) = imp.find_module(identifier, path)
+         if fp is not None: fp.close()
+     except ImportError:
+-        raise ImportError, 'No Python source file found.'
++        raise ImportError('No Python source file found.')
+ 
+     if typ == imp.PY_SOURCE:
+         return filename
+@@ -450,21 +450,21 @@
+         # See if we can find a corresponding non-compiled version.
+         filename = re.sub('.py\w$', '.py', filename)
+         if not os.path.exists(filename):
+-            raise ImportError, 'No Python source file found.'
++            raise ImportError('No Python source file found.')
+         return filename
+     elif typ == imp.PKG_DIRECTORY:
+         filename = os.path.join(filename, '__init__.py')
+         if not os.path.exists(filename):
+             filename = os.path.join(filename, '__init__.pyw')
+             if not os.path.exists(filename):
+-                raise ImportError, 'No package file found.'
++                raise ImportError('No package file found.')
+         return filename
+     elif typ == imp.C_BUILTIN:
+-        raise ImportError, 'No Python source file for builtin modules.'
++        raise ImportError('No Python source file for builtin modules.')
+     elif typ == imp.C_EXTENSION:
+-        raise ImportError, 'No Python source file for c extensions.'
++        raise ImportError('No Python source file for c extensions.')
+     else:
+-        raise ImportError, 'No Python source file found.'
++        raise ImportError('No Python source file found.')
+ 
+ #/////////////////////////////////////////////////////////////////
+ #{ File tokenization loop
+@@ -536,7 +536,7 @@
+     for toktype, toktext, (srow,scol), (erow,ecol), line_str in tok_iter:
+         # BOM encoding marker: ignore.
+         if (toktype == token.ERRORTOKEN and
+-            (toktext == u'\ufeff' or
++            (toktext == '\ufeff' or
+              toktext.encode(encoding) == '\xef\xbb\xbf')):
+             pass
+             
+@@ -629,12 +629,12 @@
+                     prev_line_doc = process_line(
+                         shallow_parse(line_toks), parent_docs, prev_line_doc, 
+                         lineno, comments, decorators, encoding)
+-                except ParseError, e:
++                except ParseError as e:
+                     raise ParseError('Error during parsing: invalid '
+                                      'syntax (%s, line %d) -- %s' %
+                                      (module_doc.filename, lineno, e))
+-                except KeyboardInterrupt, e: raise
+-                except Exception, e:
++                except KeyboardInterrupt as e: raise
++                except Exception as e:
+                     log.error('Internal error during parsing (%s, line '
+                               '%s):\n%s' % (module_doc.filename, lineno, e))
+                     raise
+@@ -673,7 +673,7 @@
+     if isinstance(api_doc, VariableDoc):
+         var_name = api_doc.name
+     else:
+-        if api_doc.canonical_name is UNKNOWN: log.debug('ouch', `api_doc`)
++        if api_doc.canonical_name is UNKNOWN: log.debug('ouch', repr(api_doc))
+         var_name = api_doc.canonical_name[-1]
+ 
+     for (name, group_vars) in container.group_specs:
+@@ -919,7 +919,7 @@
+         try: module_doc = _find(src)
+         except ImportError: module_doc = None
+         if isinstance(module_doc, ModuleDoc):
+-            for name, imp_var in module_doc.variables.items():
++            for name, imp_var in list(module_doc.variables.items()):
+                 # [xx] this is not exactly correct, but close.  It
+                 # does the wrong thing if a __var__ is explicitly
+                 # listed in __all__.
+@@ -1460,7 +1460,7 @@
+     elif DEFAULT_DECORATOR_BEHAVIOR == 'opaque':
+         return GenericValueDoc(docs_extracted_by='parser')
+     else:
+-        raise ValueError, 'Bad value for DEFAULT_DECORATOR_BEHAVIOR'
++        raise ValueError('Bad value for DEFAULT_DECORATOR_BEHAVIOR')
+ 
+ def init_arglist(func_doc, arglist):
+     if not isinstance(arglist, list) or arglist[0] != (token.OP, '('):
+@@ -1547,7 +1547,7 @@
+         try:
+             for base_name in parse_classdef_bases(line[2]):
+                 class_doc.bases.append(find_base(base_name, parent_docs))
+-        except ParseError, e:
++        except ParseError as e:
+             log.warning("Unable to extract the base list for %s: %s" %
+                         (canonical_name, e))
+             class_doc.bases = UNKNOWN
+@@ -1849,7 +1849,7 @@
+     # This happens when the class definition has not been parsed, e.g. in
+     # sf bug #1693253 on ``Exception.x = y``
+     if namespace.sort_spec is UNKNOWN:
+-        namespace.sort_spec = namespace.variables.keys()
++        namespace.sort_spec = list(namespace.variables.keys())
+ 
+     # If we already have a variable with this name, then remove the
+     # old VariableDoc from the sort_spec list; and if we gave its
+@@ -1900,7 +1900,7 @@
+     # nested scopes, because nested scope lookup does not apply to
+     # nested class definitions, and we're not worried about variables
+     # in nested functions.
+-    if not isinstance(identifier, basestring):
++    if not isinstance(identifier, str):
+         raise TypeError('identifier must be a string')
+ 
+     # Locals
+--- epydoc/docstringparser.py	(original)
++++ epydoc/docstringparser.py	(refactored)
+@@ -37,7 +37,7 @@
+ from epydoc.util import py_src_filename
+ from epydoc import log
+ import epydoc.docparser
+-import __builtin__, exceptions
++import builtins, exceptions
+ 
+ ######################################################################
+ # Docstring Fields
+@@ -242,14 +242,14 @@
+                 try:
+                     process_field(init_api_doc, docindex, field.tag(),
+                                     field.arg(), field.body())
+-                except ValueError, e: field_warnings.append(str(e))
++                except ValueError as e: field_warnings.append(str(e))
+ 
+     # Process fields
+     for field in fields:
+         try:
+             process_field(api_doc, docindex, field.tag(),
+                                field.arg(), field.body())
+-        except ValueError, e: field_warnings.append(str(e))
++        except ValueError as e: field_warnings.append(str(e))
+ 
+     # Check to make sure that all type parameters correspond to
+     # some documented parameter.
+@@ -303,7 +303,7 @@
+         value = []
+ 
+         # Try extracting the value from the pyval.
+-        ok_types = (basestring, int, float, bool, type(None))
++        ok_types = (str, int, float, bool, type(None))
+         if val_doc.pyval is not UNKNOWN:
+             if isinstance(val_doc.pyval, ok_types):
+                 value = [val_doc.pyval]
+@@ -329,7 +329,7 @@
+             if isinstance(elt, str):
+                 elt = decode_with_backslashreplace(elt)
+             else:
+-                elt = unicode(elt)
++                elt = str(elt)
+             elt = epytext.ParsedEpytextDocstring(
+                 epytext.parse_as_para(elt), inline=True)
+ 
+@@ -480,7 +480,7 @@
+     if isinstance(api_doc, ValueDoc) and api_doc != module:
+         if module not in (None, UNKNOWN) and module.pyval is exceptions:
+             return
+-        for builtin_val in __builtin__.__dict__.values():
++        for builtin_val in list(builtins.__dict__.values()):
+             if builtin_val is api_doc.pyval:
+                 return
+         
+@@ -516,7 +516,7 @@
+             error.set_linenum_offset(startline)
+             message = error.descr()
+             messages.setdefault(message, []).append(error.linenum())
+-        message_items = messages.items()
++        message_items = list(messages.items())
+         message_items.sort(lambda a,b:cmp(min(a[1]), min(b[1])))
+         for message, linenums in message_items:
+             linenums = [n for n in linenums if n is not None]
+@@ -667,7 +667,7 @@
+     _check(api_doc, tag, arg, context=NamespaceDoc, expect_arg=False)
+     for ident in _descr_to_identifiers(descr):
+         var_name_re = re.compile('^%s$' % ident.replace('*', '(.*)'))
+-        for var_name, var_doc in api_doc.variables.items():
++        for var_name, var_doc in list(api_doc.variables.items()):
+             if var_name_re.match(var_name):
+                 # Remove the variable from `variables`.
+                 api_doc.variables.pop(var_name, None)
+@@ -707,7 +707,7 @@
+         docstring_field = _descr_to_docstring_field(arg, descr)
+         docstring_field.varnames.append("__%s__" % arg)
+         api_doc.extra_docstring_fields.append(docstring_field)
+-    except ValueError, e:
++    except ValueError as e:
+         raise ValueError('Bad %s: %s' % (tag, e))
+ 
+ def process_raise_field(api_doc, docindex, tag, arg, descr):
+@@ -936,7 +936,7 @@
+     lines = docstring.expandtabs().split('\n')
+ 
+     # Find minimum indentation of any non-blank lines after first line.
+-    margin = sys.maxint
++    margin = sys.maxsize
+     for line in lines[1:]:
+         content = len(line.lstrip())
+         if content:
+@@ -945,7 +945,7 @@
+     # Remove indentation.
+     if lines:
+         lines[0] = lines[0].lstrip()
+-    if margin < sys.maxint:
++    if margin < sys.maxsize:
+         for i in range(1, len(lines)): lines[i] = lines[i][margin:]
+     # Remove any trailing (but not leading!) blank lines.
+     while lines and not lines[-1]:
+@@ -976,7 +976,7 @@
+     idents = descr.to_plaintext(None).strip()
+     idents = re.sub(r'\s+', ' ', idents)
+     if not _IDENTIFIER_LIST_REGEXP.match(idents):
+-        raise ValueError, 'Bad Identifier list: %r' % idents
++        raise ValueError('Bad Identifier list: %r' % idents)
+     rval = re.split('[:;, ] *', idents)
+     return rval
+     
+@@ -985,7 +985,7 @@
+     descr = descr.to_plaintext(None).strip()
+     args = re.split('[:;,] *', descr)
+     if len(args) == 0 or len(args) > 3:
+-        raise ValueError, 'Wrong number of arguments'
++        raise ValueError('Wrong number of arguments')
+     singular = args[0]
+     if len(args) >= 2: plural = args[1]
+     else: plural = None
+--- epydoc/gui.py	(original)
++++ epydoc/gui.py	(refactored)
+@@ -31,14 +31,14 @@
+ __docformat__ = 'epytext en'
+ 
+ import sys, os.path, re, glob
+-from Tkinter import *
+-from tkFileDialog import askopenfilename, asksaveasfilename
+-from thread import start_new_thread, exit_thread
++from tkinter import *
++from tkinter.filedialog import askopenfilename, asksaveasfilename
++from _thread import start_new_thread, exit_thread
+ from pickle import dump, load
+ 
+ # askdirectory is only defined in python 2.2+; fall back on
+ # asksaveasfilename if it's not available.
+-try: from tkFileDialog import askdirectory
++try: from tkinter.filedialog import askdirectory
+ except: askdirectory = None
+ 
+ # Include support for Zope, if it's available.
+@@ -238,7 +238,7 @@
+         log.error('Cancelled!')
+         done[0] ='cancel'
+         raise
+-    except Exception, e:
++    except Exception as e:
+         # We failed.
+         log.error('Internal error: %s' % e)
+         done[0] ='cancel'
+@@ -270,7 +270,7 @@
+         # *not* reload the modules that are present when the EpydocGUI
+         # is created, but that should only contain some builtins, some
+         # epydoc modules, Tkinter, pickle, and thread..
+-        self._old_modules = sys.modules.keys()
++        self._old_modules = list(sys.modules.keys())
+ 
+         # Create the main window.
+         self._root = Tk()
+@@ -662,7 +662,7 @@
+         self._help_browse.grid(row=row, column=3, sticky='ew', padx=2)
+         
+         from epydoc.docwriter.html_css import STYLESHEETS
+-        items = STYLESHEETS.items()
++        items = list(STYLESHEETS.items())
+         def _css_sort(css1, css2):
+             if css1[0] == 'default': return -1
+             elif css2[0] == 'default': return 1
+@@ -805,7 +805,7 @@
+         if self._root is None: return
+ 
+         # Unload any modules that we've imported
+-        for m in sys.modules.keys():
++        for m in list(sys.modules.keys()):
+             if m not in self._old_modules: del sys.modules[m]
+         self._root.destroy()
+         self._root = None
+@@ -825,7 +825,7 @@
+                         get_value_from_scriptname(name)
+                     else:
+                         get_value_from_name(name)
+-                except ImportError, e:
++                except ImportError as e:
+                     log.error(e)
+                     self._update_messages()
+                     self._root.bell()
+@@ -891,7 +891,7 @@
+ 
+         # Restore the module list.  This will force re-loading of
+         # anything that we're documenting.
+-        for m in sys.modules.keys():
++        for m in list(sys.modules.keys()):
+             if m not in self._old_modules:
+                 del sys.modules[m]
+ 
+@@ -1044,7 +1044,7 @@
+             self._imports_var.set(opts.get('show_imports', 0))
+             
+             self._css_entry.delete(0, 'end')
+-            if opts.get('css', 'default') in STYLESHEETS.keys():
++            if opts.get('css', 'default') in list(STYLESHEETS.keys()):
+                 self._css_var.set(opts.get('css', 'default'))
+             else:
+                 self._css_var.set('-other-')
+@@ -1056,7 +1056,7 @@
+             #    self._private_css_var.set('-other-')
+             #    self._css_entry.insert(0, opts.get('private_css', 'default'))
+                                                    
+-        except Exception, e:
++        except Exception as e:
+             log.error('Error opening %s: %s' % (prjfile, e))
+             self._root.bell()
+         
+@@ -1065,7 +1065,7 @@
+         try:
+             opts = self._getopts()
+             dump(opts, open(self._filename, 'w'))
+-        except Exception, e:
++        except Exception as e:
+             if self._filename is None:
+                 log.error('Error saving: %s' %  e)
+             else:
+@@ -1087,22 +1087,22 @@
+     @rtype: C{None}
+     """
+     import epydoc
+-    print "Epydoc version %s" % epydoc.__version__
++    print("Epydoc version %s" % epydoc.__version__)
+     sys.exit(0)
+ 
+ # At some point I could add:
+ #   --show-messages, --hide-messages
+ #   --show-options, --hide-options
+ def _usage():
+-    print
+-    print 'Usage: epydocgui [OPTIONS] [FILE.prj | MODULES...]'
+-    print
+-    print '    FILE.prj                  An epydoc GUI project file.'
+-    print '    MODULES...                A list of Python modules to document.'
+-    print '    -V, --version             Print the version of epydoc.'
+-    print '    -h, -?, --help, --usage   Display this usage message'
+-    print '    --debug                   Do not suppress error messages'
+-    print
++    print()
++    print('Usage: epydocgui [OPTIONS] [FILE.prj | MODULES...]')
++    print()
++    print('    FILE.prj                  An epydoc GUI project file.')
++    print('    MODULES...                A list of Python modules to document.')
++    print('    -V, --version             Print the version of epydoc.')
++    print('    -h, -?, --help, --usage   Display this usage message')
++    print('    --debug                   Do not suppress error messages')
++    print()
+     sys.exit(0)
+ 
+ def _error(s):
+@@ -1110,7 +1110,7 @@
+     if len(s) > 80:
+         i = s.rfind(' ', 0, 80)
+         if i>0: s = s[:i]+'\n'+s[i+1:]
+-    print >>sys.stderr, s
++    print(s, file=sys.stderr)
+     sys.exit(1)
+     
+ def gui():
+--- epydoc/log.py	(original)
++++ epydoc/log.py	(refactored)
+@@ -122,7 +122,7 @@
+     def __init__(self, threshold=WARNING):
+         self.threshold = threshold
+     def log(self, level, message):
+-        if level >= self.threshold: print message
++        if level >= self.threshold: print(message)
+         
+ ######################################################################
+ # Logger Registry
+--- epydoc/util.py	(original)
++++ epydoc/util.py	(refactored)
+@@ -27,7 +27,7 @@
+ 
+ def is_module_file(path):
+     # Make sure it's a file name.
+-    if not isinstance(path, basestring):
++    if not isinstance(path, str):
+         return False
+     (dir, filename) = os.path.split(path)
+     (basename, extension) = os.path.splitext(filename)
+@@ -36,7 +36,7 @@
+             extension in PY_SRC_EXTENSIONS+PY_BIN_EXTENSIONS)
+ 
+ def is_src_filename(filename):
+-    if not isinstance(filename, basestring): return False
++    if not isinstance(filename, str): return False
+     if not os.path.exists(filename): return False
+     return os.path.splitext(filename)[1] in PY_SRC_EXTENSIONS
+     
+@@ -47,7 +47,7 @@
+     and its name is a valid identifier).
+     """
+     # Make sure it's a directory name.
+-    if not isinstance(dirname, basestring):
++    if not isinstance(dirname, str):
+         return False
+     if not os.path.isdir(dirname):
+         return False
+@@ -224,7 +224,7 @@
+     @raise OSError: If there is any problem executing the
+         command, or if its exitval is not 0.
+     """
+-    if isinstance(cmd, basestring):
++    if isinstance(cmd, str):
+         cmd = cmd.split()
+ 
+     # Under Python 2.4+, use subprocess
+@@ -276,7 +276,7 @@
+             try:
+                 to_child.write(data)
+             # Guard for a broken pipe error
+-            except IOError, e:
++            except IOError as e:
+                 raise OSError(e)
+         to_child.close()
+         out = from_child.read()
+--- epydoc/docwriter/dotgraph.py	(original)
++++ epydoc/docwriter/dotgraph.py	(refactored)
+@@ -115,7 +115,7 @@
+         have the same uid."""
+ 
+         # Encode the title, if necessary.
+-        if isinstance(self.title, unicode):
++        if isinstance(self.title, str):
+             self.title = self.title.encode('ascii', 'xmlcharrefreplace')
+ 
+         # Make sure the UID isn't too long.
+@@ -247,7 +247,7 @@
+             result, err = run_subprocess((DOT_COMMAND,)+options,
+                                          self.to_dotfile())
+             if err: log.warning("Graphviz dot warning(s):\n%s" % err)
+-        except OSError, e:
++        except OSError as e:
+             log.warning("Unable to render Graphviz dot graph:\n%s" % e)
+             #log.debug(self.to_dotfile())
+             return None
+@@ -261,9 +261,9 @@
+         """
+         lines = ['digraph %s {' % self.uid,
+                  'node [%s]' % ','.join(['%s="%s"' % (k,v) for (k,v)
+-                                         in self.node_defaults.items()]),
++                                         in list(self.node_defaults.items())]),
+                  'edge [%s]' % ','.join(['%s="%s"' % (k,v) for (k,v)
+-                                         in self.edge_defaults.items()])]
++                                         in list(self.edge_defaults.items())])]
+         if self.body:
+             lines.append(self.body)
+         lines.append('/* Nodes */')
+@@ -275,7 +275,7 @@
+         lines.append('}')
+ 
+         # Default dot input encoding is UTF-8
+-        return u'\n'.join(lines).encode('utf-8')
++        return '\n'.join(lines).encode('utf-8')
+ 
+ class DotGraphNode:
+     _next_id = 0
+@@ -304,7 +304,7 @@
+         """
+         Return the dot commands that should be used to render this node.
+         """
+-        attribs = ['%s="%s"' % (k,v) for (k,v) in self._attribs.items()
++        attribs = ['%s="%s"' % (k,v) for (k,v) in list(self._attribs.items())
+                    if v is not None]
+         if self._html_label:
+             attribs.insert(0, 'label=<%s>' % (self._html_label,))
+@@ -341,7 +341,7 @@
+         if (self.end.port is not None and 'tailport' not in attribs):
+             attribs['tailport'] = self.end.port
+         # Convert attribs to a string
+-        attribs = ','.join(['%s="%s"' % (k,v) for (k,v) in attribs.items()
++        attribs = ','.join(['%s="%s"' % (k,v) for (k,v) in list(attribs.items())
+                             if v is not None])
+         if attribs: attribs = ' [%s]' % attribs
+         # Return the dotfile edge.
+@@ -791,7 +791,7 @@
+                               attributes, operations, qualifiers)
+ 
+     def to_dotfile(self):
+-        attribs = ['%s="%s"' % (k,v) for (k,v) in self._attribs.items()]
++        attribs = ['%s="%s"' % (k,v) for (k,v) in list(self._attribs.items())]
+         attribs.append('label=<%s>' % self._get_html_label())
+         s = 'node%d%s' % (self.id, ' [%s]' % (','.join(attribs)))
+         if not self.collapsed:
+@@ -929,7 +929,7 @@
+             return '#%06x' % ((red<<16)+(green<<8)+blue)
+         
+     def to_dotfile(self):
+-        attribs = ['%s="%s"' % (k,v) for (k,v) in self._attribs.items()]
++        attribs = ['%s="%s"' % (k,v) for (k,v) in list(self._attribs.items())]
+         label, depth, width = self._get_html_label(self.module_doc)
+         attribs.append('label=<%s>' % label)
+         return 'node%d%s' % (self.id, ' [%s]' % (','.join(attribs)))
+@@ -1100,7 +1100,7 @@
+     # Only show variables in the class where they're defined for
+     # *class_doc*.
+     mro = class_doc.mro()
+-    for name, var in class_doc.variables.items():
++    for name, var in list(class_doc.variables.items()):
+         i = mro.index(var.container)
+         for base in mro[i+1:]:
+             if base.pyval is object: continue # don't include `object`.
+@@ -1120,7 +1120,7 @@
+         
+     # Turn attributes into links.
+     if options.get('link_attributes', True):
+-        for node in nodes.values():
++        for node in list(nodes.values()):
+             node.link_attributes(nodes)
+             # Make sure that none of the new attribute edges break the
+             # rank ordering assigned by inheritance.
+@@ -1131,7 +1131,7 @@
+     # Construct the graph.
+     graph = DotGraph('UML class diagram for %s' % class_doc.canonical_name,
+                      body='ranksep=.2\n;nodesep=.3\n')
+-    graph.nodes = nodes.values()
++    graph.nodes = list(nodes.values())
+     
+     # Add inheritance edges.
+     for node in inheritance_nodes:
+@@ -1200,7 +1200,7 @@
+         if isinstance(api_doc, RoutineDoc):
+             functions.append(api_doc)
+         elif isinstance(api_doc, NamespaceDoc):
+-            for vardoc in api_doc.variables.values():
++            for vardoc in list(api_doc.variables.values()):
+                 if isinstance(vardoc.value, RoutineDoc):
+                     functions.append(vardoc.value)
+ 
+@@ -1258,7 +1258,7 @@
+                 _dot_version = [int(x) for x in m.group(1).split('.')]
+             else:
+                 _dot_version = (0,)
+-        except OSError, e:
++        except OSError as e:
+             _dot_version = (0,)
+         log.info('Detected dot version %s' % _dot_version)
+     return _dot_version
+--- epydoc/docwriter/html.py	(original)
++++ epydoc/docwriter/html.py	(refactored)
+@@ -15,8 +15,8 @@
+ __docformat__ = 'epytext en'
+ 
+ import re, os, sys, codecs, sre_constants, pprint, base64
+-import urllib
+-import __builtin__
++import urllib.request, urllib.parse, urllib.error
++import builtins
+ from epydoc.apidoc import *
+ import epydoc.docstringparser
+ import time, epydoc, epydoc.markup, epydoc.markup.epytext
+@@ -147,7 +147,7 @@
+     #log.debug(pysrc)
+     if debug: localdict = {'__debug': (pysrc_lines, func_name)}
+     else: localdict = {}
+-    try: exec pysrc in globals(), localdict
++    try: exec(pysrc, globals(), localdict)
+     except SyntaxError:
+         log.error('Error in script:\n' + pysrc + '\n')
+         raise
+@@ -162,7 +162,7 @@
+     that amount of indentation from all lines in C{s}.
+     """
+     # Strip indentation from the template.
+-    minindent = sys.maxint
++    minindent = sys.maxsize
+     lines = s.split('\n')
+     for line in lines:
+         stripline = line.lstrip()
+@@ -378,7 +378,7 @@
+         
+         # Make sure inheritance has a sane value.
+         if self._inheritance not in ('listed', 'included', 'grouped'):
+-            raise ValueError, 'Bad value for inheritance'
++            raise ValueError('Bad value for inheritance')
+ 
+         # Create the project homepage link, if it was not specified.
+         if (self._prj_name or self._prj_url) and not self._prj_link:
+@@ -422,7 +422,7 @@
+             if isinstance(doc, NamespaceDoc):
+                 # add any vars with generic values; but don't include
+                 # inherited vars.
+-                self.indexed_docs += [d for d in doc.variables.values() if
++                self.indexed_docs += [d for d in list(doc.variables.values()) if
+                                       isinstance(d.value, GenericValueDoc)
+                                       and d.container == doc]
+         self.indexed_docs.sort()
+@@ -629,15 +629,15 @@
+             self._write(self.write_toc, directory, 'toc.html')
+             self._write(self.write_project_toc, directory, 'toc-everything.html')
+             for doc in self.module_list:
+-                filename = 'toc-%s' % urllib.unquote(self.url(doc))
++                filename = 'toc-%s' % urllib.parse.unquote(self.url(doc))
+                 self._write(self.write_module_toc, directory, filename, doc)
+ 
+         # Write the object documentation.
+         for doc in self.module_list:
+-            filename = urllib.unquote(self.url(doc))
++            filename = urllib.parse.unquote(self.url(doc))
+             self._write(self.write_module, directory, filename, doc)
+         for doc in self.class_list:
+-            filename = urllib.unquote(self.url(doc))
++            filename = urllib.parse.unquote(self.url(doc))
+             self._write(self.write_class, directory, filename, doc)
+ 
+         # Write source code files.
+@@ -651,11 +651,11 @@
+                     name = api_doc.canonical_name[-1]
+                     name_to_docs.setdefault(name, []).append(api_doc)
+             # Sort each entry of the name_to_docs list.
+-            for doc_list in name_to_docs.values():
++            for doc_list in list(name_to_docs.values()):
+                 doc_list.sort()
+             # Write the source code for each module.
+             for doc in self.modules_with_sourcecode:
+-                filename = urllib.unquote(self.pysrc_url(doc))
++                filename = urllib.parse.unquote(self.pysrc_url(doc))
+                 self._write(self.write_sourcecode, directory, filename, doc,
+                             name_to_docs)
+ 
+@@ -672,17 +672,17 @@
+         self.write_homepage(directory)
+ 
+         # Don't report references to builtins as missing
+-        for k in self._failed_xrefs.keys(): # have a copy of keys
++        for k in list(self._failed_xrefs.keys()): # have a copy of keys
+             if hasattr(__builtin__, k):
+                 del self._failed_xrefs[k]
+ 
+         # Report any failed crossreferences
+         if self._failed_xrefs:
+             estr = 'Failed identifier crossreference targets:\n'
+-            failed_identifiers = self._failed_xrefs.keys()
++            failed_identifiers = list(self._failed_xrefs.keys())
+             failed_identifiers.sort()
+             for identifier in failed_identifiers:
+-                names = self._failed_xrefs[identifier].keys()
++                names = list(self._failed_xrefs[identifier].keys())
+                 names.sort()
+                 estr += '- %s' % identifier
+                 estr += '\n'
+@@ -1292,7 +1292,7 @@
+         # List the functions.
+         funcs = [d for d in self.routine_list 
+                  if not isinstance(self.docindex.container(d), 
+-                                   (ClassDoc, types.NoneType))]
++                                   (ClassDoc, type(None)))]
+         self.write_toc_section(out, "All Functions", funcs)
+ 
+         # List the variables.
+@@ -1444,15 +1444,15 @@
+ 
+     def write_javascript(self, directory):
+         jsfile = open(os.path.join(directory, 'epydoc.js'), 'w')
+-        print >> jsfile, self.TOGGLE_PRIVATE_JS
+-        print >> jsfile, self.SHOW_PRIVATE_JS
+-        print >> jsfile, self.GET_COOKIE_JS
+-        print >> jsfile, self.SET_FRAME_JS
+-        print >> jsfile, self.HIDE_PRIVATE_JS
+-        print >> jsfile, self.TOGGLE_CALLGRAPH_JS
+-        print >> jsfile, html_colorize.PYSRC_JAVASCRIPTS
+-        print >> jsfile, self.GET_ANCHOR_JS
+-        print >> jsfile, self.REDIRECT_URL_JS
++        print(self.TOGGLE_PRIVATE_JS, file=jsfile)
++        print(self.SHOW_PRIVATE_JS, file=jsfile)
++        print(self.GET_COOKIE_JS, file=jsfile)
++        print(self.SET_FRAME_JS, file=jsfile)
++        print(self.HIDE_PRIVATE_JS, file=jsfile)
++        print(self.TOGGLE_CALLGRAPH_JS, file=jsfile)
++        print(html_colorize.PYSRC_JAVASCRIPTS, file=jsfile)
++        print(self.GET_ANCHOR_JS, file=jsfile)
++        print(self.REDIRECT_URL_JS, file=jsfile)
+         jsfile.close()
+ 
+     #: A javascript that is used to show or hide the API documentation
+@@ -1651,7 +1651,7 @@
+         """
+         if callgraph is None: return ""
+         
+-        if isinstance(callgraph, basestring):
++        if isinstance(callgraph, str):
+             uid = callgraph
+             rv = self._callgraph_cache.get(callgraph, "")
+ 
+@@ -1692,7 +1692,7 @@
+         # Use class=codelink, to match style w/ the source code link.
+         if callgraph is None: return ''
+ 
+-        if isinstance(callgraph, basestring):
++        if isinstance(callgraph, str):
+             uid = callgraph
+         else:
+             uid = callgraph.uid
+@@ -1718,7 +1718,7 @@
+               }
+ 
+     def write_images(self, directory):
+-        for (name, data) in self.IMAGES.items():
++        for (name, data) in list(self.IMAGES.items()):
+             f = open(os.path.join(directory, name), 'wb')
+             f.write(base64.decodestring(data))
+             f.close()
+@@ -2701,7 +2701,7 @@
+         return s
+ 
+     def _arg_name(self, arg):
+-        if isinstance(arg, basestring):
++        if isinstance(arg, str):
+             return arg
+         elif len(arg) == 1:
+             return '(%s,)' % self._arg_name(arg[0])
+@@ -2841,7 +2841,7 @@
+         out('<div class="fields">')
+         for field in fields:
+             if field.takes_arg:
+-                for arg, descrs in field_values[field].items():
++                for arg, descrs in list(field_values[field].items()):
+                     self.write_standard_field(out, doc, field, descrs, arg)
+                                               
+             else:
+@@ -2963,7 +2963,7 @@
+                 for (field, arg, descr) in doc.metadata:
+                     if field.tags[0] == field_name:
+                         descrs.setdefault(arg, []).append(descr)
+-            for (arg, descr_list) in descrs.iteritems():
++            for (arg, descr_list) in descrs.items():
+                 index.setdefault(arg, []).append( (doc, descr_list) )
+         return index
+ 
+@@ -3069,13 +3069,13 @@
+         skip = (ModuleDoc, ClassDoc, type(UNKNOWN))
+         for val_doc in self.module_list:
+             self.write_url_record(out, val_doc)
+-            for var in val_doc.variables.itervalues():
++            for var in val_doc.variables.values():
+                 if not isinstance(var.value, skip):
+                     self.write_url_record(out, var)
+ 
+         for val_doc in self.class_list:
+             self.write_url_record(out, val_doc)
+-            for var in val_doc.variables.itervalues():
++            for var in val_doc.variables.values():
+                 self.write_url_record(out, var)
+ 
+     def write_url_record(self, out, obj):
+@@ -3091,7 +3091,7 @@
+         """Make a best-guess as to whether the given class is public."""
+         container = self.docindex.container(valdoc)
+         if isinstance(container, NamespaceDoc):
+-            for vardoc in container.variables.values():
++            for vardoc in list(container.variables.values()):
+                 if vardoc in (UNKNOWN, None): continue
+                 if vardoc.value is valdoc:
+                     return vardoc.is_public
+@@ -3176,11 +3176,11 @@
+         # Module: <canonical_name>-module.html
+         if isinstance(obj, ModuleDoc):
+             if obj not in self.module_set: return None
+-            return urllib.quote('%s'%obj.canonical_name) + '-module.html'
++            return urllib.parse.quote('%s'%obj.canonical_name) + '-module.html'
+         # Class: <canonical_name>-class.html
+         elif isinstance(obj, ClassDoc):
+             if obj not in self.class_set: return None
+-            return urllib.quote('%s'%obj.canonical_name) + '-class.html'
++            return urllib.parse.quote('%s'%obj.canonical_name) + '-class.html'
+         # Variable
+         elif isinstance(obj, VariableDoc):
+             val_doc = obj.value
+@@ -3197,7 +3197,7 @@
+             else:
+                 container_url = self.url(obj.container)
+                 if container_url is None: return None
+-                return '%s#%s' % (container_url, urllib.quote('%s'%obj.name))
++                return '%s#%s' % (container_url, urllib.parse.quote('%s'%obj.name))
+         # Value (other than module or class)
+         elif isinstance(obj, ValueDoc):
+             container = self.docindex.container(obj)
+@@ -3206,7 +3206,7 @@
+             else:
+                 container_url = self.url(container)
+                 if container_url is None: return None
+-                anchor = urllib.quote('%s'%obj.canonical_name[-1])
++                anchor = urllib.parse.quote('%s'%obj.canonical_name[-1])
+                 return '%s#%s' % (container_url, anchor)
+         # Dotted name: look up the corresponding APIDoc
+         elif isinstance(obj, DottedName):
+@@ -3221,7 +3221,7 @@
+         elif obj == 'trees':
+             return self._trees_url
+         else:
+-            raise ValueError, "Don't know what to do with %r" % obj
++            raise ValueError("Don't know what to do with %r" % obj)
+ 
+     def pysrc_link(self, api_doc):
+         if not self._incl_sourcecode:
+@@ -3242,7 +3242,7 @@
+         elif isinstance(api_doc, ModuleDoc):
+             if api_doc in self.modules_with_sourcecode:
+                 return ('%s-pysrc.html' %
+-                       urllib.quote('%s' % api_doc.canonical_name))
++                       urllib.parse.quote('%s' % api_doc.canonical_name))
+             else:
+                 return None
+         else:
+@@ -3257,7 +3257,7 @@
+                 return module_pysrc_url
+             mname_len = len(module.canonical_name)
+             anchor = '%s' % api_doc.canonical_name[mname_len:]
+-            return '%s#%s' % (module_pysrc_url, urllib.quote(anchor))
++            return '%s#%s' % (module_pysrc_url, urllib.parse.quote(anchor))
+         
+         # We didn't find it:
+         return None
+@@ -3463,7 +3463,7 @@
+     # [xx] Should this be added to the DocstringLinker interface???
+     # Currently, this is *only* used by dotgraph.
+     def url_for(self, identifier):
+-        if isinstance(identifier, (basestring, DottedName)):
++        if isinstance(identifier, (str, DottedName)):
+             doc = self.docindex.find(identifier, self.container)
+             if doc:
+                 return self.htmlwriter.url(doc)
+--- epydoc/docwriter/html_colorize.py	(original)
++++ epydoc/docwriter/html_colorize.py	(refactored)
+@@ -18,8 +18,8 @@
+ from epydoc.util import py_src_filename
+ from epydoc.apidoc import *
+ import tokenize, token, cgi, keyword
+-try: from cStringIO import StringIO
+-except: from StringIO import StringIO
++try: from io import StringIO
++except: from io import StringIO
+ 
+ ######################################################################
+ ## Python source colorizer
+@@ -460,7 +460,7 @@
+         self.find_line_offsets()
+ 
+         num_lines = self.text.count('\n')+1
+-        self.linenum_size = len(`num_lines+1`)
++        self.linenum_size = len(repr(num_lines+1))
+         
+         # Call the tokenizer, and send tokens to our `tokeneater()`
+         # method.  If anything goes wrong, then fall-back to using
+@@ -472,7 +472,7 @@
+             html = output.getvalue()
+             if self.has_decorators:
+                 html = self._FIX_DECORATOR_RE.sub(r'\2\1', html)
+-        except tokenize.TokenError, ex:
++        except tokenize.TokenError as ex:
+             html = self.text
+ 
+         # Check for a unicode encoding declaration.
+@@ -494,16 +494,17 @@
+ 
+         return html
+ 
+-    def tokeneater(self, toktype, toktext, (srow,scol), (erow,ecol), line):
++    def tokeneater(self, toktype, toktext, xxx_todo_changeme, xxx_todo_changeme1, line):
+         """
+         A callback function used by C{tokenize.tokenize} to handle
+         each token in the module.  C{tokeneater} collects tokens into
+         the C{self.cur_line} list until a complete logical line has
+         been formed; and then calls L{handle_line} to process that line.
+         """
+-        # If we encounter any errors, then just give up.
++        (srow,scol) = xxx_todo_changeme
++        (erow,ecol) = xxx_todo_changeme1
+         if toktype == token.ERRORTOKEN:
+-            raise tokenize.TokenError, toktype
++            raise tokenize.TokenError(toktype)
+ 
+         # Did we skip anything whitespace?  If so, add a pseudotoken
+         # for it, with toktype=None.  (Note -- this skipped string
+@@ -568,7 +569,7 @@
+         # Loop through each token, and colorize it appropriately.
+         for i, (toktype, toktext) in enumerate(line):
+             if type(s) is not str:
+-                if type(s) is unicode:
++                if type(s) is str:
+                     log.error('While colorizing %s -- got unexpected '
+                               'unicode string' % self.module_name)
+                     s = s.encode('ascii', 'xmlcharrefreplace')
+@@ -729,7 +730,7 @@
+                       (uid, css_class_html, targets_html, tooltip_html,
+                        css_class_html, onclick))
+             elif url:
+-                if isinstance(url, unicode):
++                if isinstance(url, str):
+                     url = url.encode('ascii', 'xmlcharrefreplace')
+                 s += ('<a%s%s href="%s">' %
+                       (tooltip_html, css_class_html, url))
+@@ -741,8 +742,8 @@
+             else:
+                 try:
+                     s += self.add_line_numbers(cgi.escape(toktext), css_class)
+-                except Exception, e:
+-                    print (toktext, css_class, toktext.encode('ascii'))
++                except Exception as e:
++                    print((toktext, css_class, toktext.encode('ascii')))
+                     raise
+ 
+             if onclick: s += "</a></tt>"
+--- epydoc/docwriter/latex.py	(original)
++++ epydoc/docwriter/latex.py	(refactored)
+@@ -217,7 +217,7 @@
+         else:
+             result = []
+             write_func(result.append, *args)
+-            s = u''.join(result)
++            s = ''.join(result)
+             try:
+                 s = s.encode(self._encoding)
+             except UnicodeError:
+@@ -846,7 +846,7 @@
+         return s
+     
+     def _arg_name(self, arg):
+-        if isinstance(arg, basestring):
++        if isinstance(arg, str):
+             return arg
+         elif len(arg) == 1:
+             return '(%s,)' % self._arg_name(arg[0])
+@@ -1040,7 +1040,7 @@
+ 
+         for field in fields:
+             if field.takes_arg:
+-                for arg, descrs in field_values[field].items():
++                for arg, descrs in list(field_values[field].items()):
+                     self.write_standard_field(out, doc, field, descrs, arg)
+                                               
+             else:
+--- epydoc/docwriter/plaintext.py	(original)
++++ epydoc/docwriter/plaintext.py	(refactored)
+@@ -30,9 +30,9 @@
+                 self.write_function(out, api_doc)
+             else:
+                 assert 0, ('%s not handled yet' % api_doc.__class__)
+-        except Exception, e:
+-            print '\n\n'
+-            print ''.join(result)
++        except Exception as e:
++            print('\n\n')
++            print(''.join(result))
+             raise
+ 
+         return ''.join(result)
+--- epydoc/docwriter/xlink.py	(original)
++++ epydoc/docwriter/xlink.py	(refactored)
+@@ -247,7 +247,7 @@
+         """
+         self._filename = str(f)
+ 
+-        if isinstance(f, basestring):
++        if isinstance(f, str):
+             f = open(f)
+ 
+         self.load_records(self._iter_tuples(f))
+@@ -391,7 +391,7 @@
+         # Get the resolver from the register and create an url from it.
+         try:
+             url = api_register[name].get_url(text)
+-        except IndexError, exc:
++        except IndexError as exc:
+             msg = inliner.reporter.warning(str(exc), line=lineno)
+             if problematic:
+                 prb = inliner.problematic(rawtext, text, msg)
+@@ -498,8 +498,8 @@
+                 for name, root in map(split_name, settings.external_api_root):
+                     set_api_root(name, root)
+ 
+-        except OptionValueError, exc:
+-            print >>sys.stderr, "%s: %s" % (exc.__class__.__name__, exc)
++        except OptionValueError as exc:
++            print("%s: %s" % (exc.__class__.__name__, exc), file=sys.stderr)
+             sys.exit(2)
+ 
+     read_configuration = classmethod(read_configuration)
+--- epydoc/markup/__init__.py	(original)
++++ epydoc/markup/__init__.py	(refactored)
+@@ -161,9 +161,9 @@
+     parse_docstring = _markup_language_registry[markup]
+ 
+     # If it's a string, then it names a function to import.
+-    if isinstance(parse_docstring, basestring):
++    if isinstance(parse_docstring, str):
+         try: exec('from %s import parse_docstring' % parse_docstring)
+-        except ImportError, e:
++        except ImportError as e:
+             _parse_warn('Error importing %s for markup language %s: %s' %
+                         (parse_docstring, markup, e))
+             import epydoc.markup.plaintext as plaintext
+@@ -176,7 +176,7 @@
+     # Parse the docstring.
+     try: parsed_docstring = parse_docstring(docstring, errors, **options)
+     except KeyboardInterrupt: raise
+-    except Exception, e:
++    except Exception as e:
+         if epydoc.DEBUG: raise
+         log.error('Internal error while parsing a docstring: %s; '
+                   'treating docstring as plaintext' % e)
+@@ -322,7 +322,7 @@
+         @return: A plaintext fragment that encodes this docstring.
+         @rtype: C{string}
+         """
+-        raise NotImplementedError, 'ParsedDocstring.to_plaintext()'
++        raise NotImplementedError('ParsedDocstring.to_plaintext()')
+ 
+     def index_terms(self):
+         """
+@@ -453,7 +453,7 @@
+         @rtype: C{string}
+         @return: The translated index term.
+         """
+-        raise NotImplementedError, 'DocstringLinker.translate_indexterm()'
++        raise NotImplementedError('DocstringLinker.translate_indexterm()')
+ 
+     def translate_identifier_xref(self, identifier, label=None):
+         """
+@@ -470,7 +470,7 @@
+         @rtype: C{string}
+         @return: The translated crossreference link.
+         """
+-        raise NotImplementedError, 'DocstringLinker.translate_xref()'
++        raise NotImplementedError('DocstringLinker.translate_xref()')
+ 
+ ##################################################
+ ## ParseError exceptions
+--- epydoc/markup/epytext.py	(original)
++++ epydoc/markup/epytext.py	(refactored)
+@@ -143,13 +143,13 @@
+         notation.
+         @bug: Doesn't escape '<' or '&' or '>'.
+         """
+-        attribs = ''.join([' %s=%r' % t for t in self.attribs.items()])
++        attribs = ''.join([' %s=%r' % t for t in list(self.attribs.items())])
+         return ('<%s%s>' % (self.tag, attribs) +
+                 ''.join([str(child) for child in self.children]) +
+                 '</%s>' % self.tag)
+ 
+     def __repr__(self):
+-        attribs = ''.join([', %s=%r' % t for t in self.attribs.items()])
++        attribs = ''.join([', %s=%r' % t for t in list(self.attribs.items())])
+         args = ''.join([', %r' % c for c in self.children])
+         return 'Element(%s%s%s)' % (self.tag, args, attribs)
+ 
+@@ -1085,7 +1085,7 @@
+             # Special handling for symbols:
+             if stack[-1].tag == 'symbol':
+                 if (len(stack[-1].children) != 1 or
+-                    not isinstance(stack[-1].children[0], basestring)):
++                    not isinstance(stack[-1].children[0], str)):
+                     estr = "Invalid symbol code."
+                     errors.append(ColorizingError(estr, token, end))
+                 else:
+@@ -1100,7 +1100,7 @@
+             # Special handling for escape elements:
+             if stack[-1].tag == 'escape':
+                 if (len(stack[-1].children) != 1 or
+-                    not isinstance(stack[-1].children[0], basestring)):
++                    not isinstance(stack[-1].children[0], str)):
+                     estr = "Invalid escape code."
+                     errors.append(ColorizingError(estr, token, end))
+                 else:
+@@ -1157,7 +1157,7 @@
+     children = graph.children[:]
+     graph.children = []
+ 
+-    if len(children) != 1 or not isinstance(children[0], basestring):
++    if len(children) != 1 or not isinstance(children[0], str):
+         bad_graph_spec = "Bad graph specification"
+     else:
+         pieces = children[0].split(None, 1)
+@@ -1188,7 +1188,7 @@
+     variables = link.children[:]
+ 
+     # If the last child isn't text, we know it's bad.
+-    if len(variables)==0 or not isinstance(variables[-1], basestring):
++    if len(variables)==0 or not isinstance(variables[-1], str):
+         estr = "Bad %s target." % link.tag
+         errors.append(ColorizingError(estr, token, end))
+         return
+@@ -1259,7 +1259,7 @@
+     @return: The epytext string corresponding to C{tree}.
+     @rtype: C{string}
+     """
+-    if isinstance(tree, basestring):
++    if isinstance(tree, str):
+         str = re.sub(r'\{', '\0', tree)
+         str = re.sub(r'\}', '\1', str)
+         return str
+@@ -1318,7 +1318,7 @@
+     elif tree.tag == 'graph':
+         return 'G{%s}' % ' '.join(variables)
+     else:
+-        for (tag, name) in _COLORIZING_TAGS.items():
++        for (tag, name) in list(_COLORIZING_TAGS.items()):
+             if name == tree.tag:
+                 return '%s{%s}' % (tag, childstr)
+     raise ValueError('Unknown DOM element %r' % tree.tag)
+@@ -1346,7 +1346,7 @@
+     @return: The epytext string corresponding to C{tree}.
+     @rtype: C{string}
+     """
+-    if isinstance(tree, basestring): return tree
++    if isinstance(tree, str): return tree
+ 
+     if tree.tag == 'section': seclevel += 1
+ 
+@@ -1427,7 +1427,7 @@
+     @return: The epytext string corresponding to C{tree}.
+     @rtype: C{string}
+     """
+-    if isinstance(tree, basestring):
++    if isinstance(tree, str):
+         str = re.sub(r'\{', '\0', tree)
+         str = re.sub(r'\}', '\1', str)
+         return str
+@@ -1460,7 +1460,7 @@
+         str = re.sub('\0', 'E{lb}', childstr)
+         str = re.sub('\1', 'E{rb}', str)
+         uline = len(childstr)*_HEADING_CHARS[seclevel-1]
+-        return ('SEC'+`seclevel`+'>|'+(indent-8)*' ' + str + '\n' +
++        return ('SEC'+repr(seclevel)+'>|'+(indent-8)*' ' + str + '\n' +
+                 '     |'+(indent-8)*' ' + uline + '\n')
+     elif tree.tag == 'doctestblock':
+         str = re.sub('\0', '{', childstr)
+@@ -1493,7 +1493,7 @@
+     elif tree.tag == 'graph':
+         return 'G{%s}' % ' '.join(variables)
+     else:
+-        for (tag, name) in _COLORIZING_TAGS.items():
++        for (tag, name) in list(_COLORIZING_TAGS.items()):
+             if name == tree.tag:
+                 return '%s{%s}' % (tag, childstr)
+     raise ValueError('Unknown DOM element %r' % tree.tag)
+@@ -1535,19 +1535,19 @@
+     warnings.sort()
+     errors.sort()
+     if warnings:
+-        print >>stream, '='*SCRWIDTH
+-        print >>stream, "WARNINGS"
+-        print >>stream, '-'*SCRWIDTH
++        print('='*SCRWIDTH, file=stream)
++        print("WARNINGS", file=stream)
++        print('-'*SCRWIDTH, file=stream)
+         for warning in warnings:
+-            print >>stream, warning.as_warning()
+-        print >>stream, '='*SCRWIDTH
++            print(warning.as_warning(), file=stream)
++        print('='*SCRWIDTH, file=stream)
+     if errors and show_errors:
+-        if not warnings: print >>stream, '='*SCRWIDTH
+-        print >>stream, "ERRORS"
+-        print >>stream, '-'*SCRWIDTH
++        if not warnings: print('='*SCRWIDTH, file=stream)
++        print("ERRORS", file=stream)
++        print('-'*SCRWIDTH, file=stream)
+         for error in errors:
+-            print >>stream, error
+-        print >>stream, '='*SCRWIDTH
++            print(error, file=stream)
++        print('='*SCRWIDTH, file=stream)
+ 
+     if confused: raise
+     elif errors: raise SyntaxError('Encountered Errors')
+@@ -1808,7 +1808,7 @@
+ 
+     def _to_html(self, tree, linker, directory, docindex, context,
+                  indent=0, seclevel=0):
+-        if isinstance(tree, basestring):
++        if isinstance(tree, str):
+             return plaintext_to_html(tree)
+ 
+         if tree.tag == 'epytext': indent -= 2
+@@ -1933,7 +1933,7 @@
+             
+     
+     def _to_latex(self, tree, linker, indent=0, seclevel=0, breakany=0):
+-        if isinstance(tree, basestring):
++        if isinstance(tree, str):
+             return plaintext_to_latex(tree, breakany=breakany)
+ 
+         if tree.tag == 'section': seclevel += 1
+@@ -2048,7 +2048,7 @@
+         para = Element('para', inline=True)
+         doc.children.append(para)
+         for parachild in parachildren:
+-            if isinstance(parachild, basestring):
++            if isinstance(parachild, str):
+                 m = self._SUMMARY_RE.match(parachild)
+                 if m:
+                     para.children.append(m.group(1))
+@@ -2104,7 +2104,7 @@
+         return self._terms
+ 
+     def _index_terms(self, tree, terms):
+-        if tree is None or isinstance(tree, basestring):
++        if tree is None or isinstance(tree, str):
+             return
+         
+         if tree.tag == 'indexed':
+--- epydoc/markup/plaintext.py	(original)
++++ epydoc/markup/plaintext.py	(refactored)
+@@ -28,7 +28,7 @@
+ class ParsedPlaintextDocstring(ParsedDocstring):
+     def __init__(self, text, **options):
+         self._verbatim = options.get('verbatim', 1)
+-        if text is None: raise ValueError, 'Bad text value (expected a str)'
++        if text is None: raise ValueError('Bad text value (expected a str)')
+         self._text = text
+ 
+     def to_html(self, docstring_linker, **options):
+--- epydoc/markup/pyval_repr.py	(original)
++++ epydoc/markup/pyval_repr.py	(refactored)
+@@ -127,9 +127,9 @@
+     RE_OP_TAG = 're-op'
+     RE_FLAGS_TAG = 're-flags'
+ 
+-    ELLIPSIS = Element('code', u'...', style='variable-ellipsis')
+-    LINEWRAP = Element('symbol', u'crarr')
+-    UNKNOWN_REPR = Element('code', u'??', style='variable-unknown')
++    ELLIPSIS = Element('code', '...', style='variable-ellipsis')
++    LINEWRAP = Element('symbol', 'crarr')
++    UNKNOWN_REPR = Element('code', '??', style='variable-unknown')
+     
+     GENERIC_OBJECT_RE = re.compile(r'^<.* at 0x[0-9a-f]+>$', re.IGNORECASE)
+ 
+@@ -180,12 +180,12 @@
+         state.score += 1
+         
+         if pyval is None or pyval is True or pyval is False:
+-            self._output(unicode(pyval), self.CONST_TAG, state)
+-        elif pyval_type in (int, float, long, types.ComplexType):
+-            self._output(unicode(pyval), self.NUMBER_TAG, state)
++            self._output(str(pyval), self.CONST_TAG, state)
++        elif pyval_type in (int, float, int, complex):
++            self._output(str(pyval), self.NUMBER_TAG, state)
+         elif pyval_type is str:
+             self._colorize_str(pyval, state, '', 'string-escape')
+-        elif pyval_type is unicode:
++        elif pyval_type is str:
+             if self.ESCAPE_UNICODE:
+                 self._colorize_str(pyval, state, 'u', 'unicode-escape')
+             else:
+@@ -201,15 +201,15 @@
+             self._multiline(self._colorize_iter, self._sort(pyval),
+                             state, 'frozenset([', '])')
+         elif pyval_type is dict:
+-            self._multiline(self._colorize_dict, self._sort(pyval.items()),
++            self._multiline(self._colorize_dict, self._sort(list(pyval.items())),
+                             state, '{', '}')
+         elif is_re_pattern(pyval):
+             self._colorize_re(pyval, state)
+         else:
+             try:
+                 pyval_repr = repr(pyval)
+-                if not isinstance(pyval_repr, (str, unicode)):
+-                    pyval_repr = unicode(pyval_repr)
++                if not isinstance(pyval_repr, str):
++                    pyval_repr = str(pyval_repr)
+                 pyval_repr_ok = True
+             except KeyboardInterrupt:
+                 raise
+@@ -325,7 +325,7 @@
+         # Parse the regexp pattern.
+         tree = sre_parse.parse(pat, flags)
+         groups = dict([(num,name) for (name,num) in
+-                       tree.pattern.groupdict.items()])
++                       list(tree.pattern.groupdict.items())])
+         # Colorize it!
+         self._output("re.compile(r'", None, state)
+         self._colorize_re_flags(tree.pattern.flags, state)
+@@ -348,7 +348,7 @@
+             args = elt[1]
+     
+             if op == sre_constants.LITERAL:
+-                c = unichr(args)
++                c = chr(args)
+                 # Add any appropriate escaping.
+                 if c in '.^$\\*+?{}[]|()\'': c = '\\'+c
+                 elif c == '\t': c = '\\t'
+@@ -428,7 +428,7 @@
+                     self._output('(?P<', self.RE_GROUP_TAG, state)
+                     self._output(groups[args[0]], self.RE_REF_TAG, state)
+                     self._output('>', self.RE_GROUP_TAG, state)
+-                elif isinstance(args[0], (int, long)):
++                elif isinstance(args[0], int):
+                     # This is cheating:
+                     self._output('(', self.RE_GROUP_TAG, state)
+                 else:
+@@ -505,7 +505,7 @@
+                     raise _Maxlines()
+                 if not state.linebreakok:
+                     raise _Linebreak()
+-                state.result.append(u'\n')
++                state.result.append('\n')
+                 state.lineno += 1
+                 state.charpos = 0
+ 
+--- epydoc/markup/restructuredtext.py	(original)
++++ epydoc/markup/restructuredtext.py	(refactored)
+@@ -402,12 +402,12 @@
+         # Handle special fields:
+         fbody = node[1]
+         if arg is None:
+-            for (list_tag, entry_tag) in CONSOLIDATED_FIELDS.items():
++            for (list_tag, entry_tag) in list(CONSOLIDATED_FIELDS.items()):
+                 if tagname.lower() == list_tag:
+                     try:
+                         self.handle_consolidated_field(fbody, entry_tag)
+                         return
+-                    except ValueError, e:
++                    except ValueError as e:
+                         estr = 'Unable to split consolidated field '
+                         estr += '"%s" - %s' % (tagname, e)
+                         self._errors.append(ParseError(estr, node.line,
+@@ -632,7 +632,7 @@
+         # iterate through attributes one at a time because some
+         # versions of docutils don't case-normalize attributes.
+         for attr_dict in attr_dicts:
+-            for (key, val) in attr_dict.items():
++            for (key, val) in list(attr_dict.items()):
+                 # Prefix all CSS classes with "rst-"; and prefix all
+                 # names with "rst-" to avoid conflicts.
+                 if key.lower() in ('class', 'id', 'name'):
+--- epydoc/test/__init__.py	(original)
++++ epydoc/test/__init__.py	(refactored)
+@@ -87,8 +87,8 @@
+         try:
+             __import__(module)
+         except ImportError:
+-            print ('Skipping %r (required module %r not found)' %
+-                   (os.path.split(filename)[-1], module))
++            print(('Skipping %r (required module %r not found)' %
++                   (os.path.split(filename)[-1], module)))
+             return False
+     return True
+             
+--- epydoc/test/util.py	(original)
++++ epydoc/test/util.py	(refactored)
+@@ -53,7 +53,7 @@
+     if build: val_doc = val_doc.variables[build].value
+     # Display it.
+     if isinstance(val_doc, ClassDoc):
+-        for val in val_doc.variables.values():
++        for val in list(val_doc.variables.values()):
+             if isinstance(val.value, RoutineDoc):
+                 fun_to_plain(val.value)
+     s = val_doc.pp(include=attribs.split(),exclude=exclude.split())
+@@ -61,7 +61,7 @@
+     s = re.sub(r"(<module 'epydoc_test' from ).*", r'\1...', s)
+     s = re.sub(r"(<function \w+ at )0x\w+>", r"\1...>", s)
+     s = re.sub(r"(<\w+ object at )0x\w+>", r"\1...>", s)
+-    print s
++    print(s)
+     # Clean up.
+     cleanup_tmp_dir(tmp_dir)
+ 
+@@ -89,7 +89,7 @@
+     # Display it.
+     s = val_doc.pp(include=attribs.split(), exclude=exclude.split())
+     s = re.sub(r"filename = .*", "filename = ...", s)
+-    print s
++    print(s)
+     # Clean up.
+     cleanup_tmp_dir(tmp_dir)
+ 
+@@ -121,7 +121,7 @@
+     s = re.sub(r"(<module 'epydoc_test' from ).*", r'\1...', s)
+     s = re.sub(r"(<function \w+ at )0x\w+>", r"\1...>", s)
+     s = re.sub(r"(<\w+ object at )0x\w+>", r"\1...>", s)
+-    print s
++    print(s)
+     # Clean up.
+     cleanup_tmp_dir(tmp_dir)
+ 
+@@ -192,7 +192,7 @@
+ 
+ def fun_to_plain(val_doc):
+     """Convert parsed docstrings in text from a RoutineDoc"""
+-    for k, v in val_doc.arg_types.items():
++    for k, v in list(val_doc.arg_types.items()):
+         val_doc.arg_types[k] = to_plain(v)
+     for i, (k, v) in enumerate(val_doc.arg_descrs):
+         val_doc.arg_descrs[i] = (k, to_plain(v))
+@@ -206,7 +206,7 @@
+     s = parsed_docstring.to_html(None).strip()
+     s = s.encode('ascii', 'xmlcharrefreplace')
+     s = remove_surrogates(s)
+-    print s
++    print(s)
+     return ''
+ 
+ def remove_surrogates(s):
