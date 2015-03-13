@@ -2,6 +2,29 @@
 
 from setuptools import setup
 
+# c++
+from distutils.core import Extension
+
+libraries = ['boost_python', 'stdc++']
+
+# py2cpp.util.tuple_parser
+tuple_parser = Extension(
+    name='py2cpp.util.tuple_parser',
+    libraries=libraries,
+    sources=['src/tuple_parser/main.cpp'],
+    extra_compile_args=['-std=c++11']
+)
+
+
+# distutils c++ bug fix.
+import os
+from distutils.sysconfig import get_config_vars
+(opt,) = get_config_vars('OPT')
+os.environ['OPT'] = " ".join(
+    [flag for flag in opt.split() if flag != '-Wstrict-prototypes']
+)
+
+
 setup(
     name="py2cpp",
     version="0.1.0",
@@ -13,7 +36,6 @@ setup(
     url="https://github.com/mugwort-rc/py2cpp",
     packages=["py2cpp"],
     platforms=["any"],
-    package_data={"": ["LICENSE", "README.rst"]},
     include_package_data=True,
     classifiers=[
         "Development Status :: 1 - Planning",
@@ -28,4 +50,5 @@ setup(
         "Topic :: Software Development :: Code Generators",
         "Topic :: Software Development :: Compilers",
     ],
+    ext_modules=[tuple_parser]
 )
