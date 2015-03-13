@@ -6,6 +6,8 @@
 #
 # $Id: cli.py 1678 2008-01-29 17:21:29Z edloper $
 
+from __future__ import print_function
+
 """
 Command-line interface for epydoc.  Abbreviated Usage::
 

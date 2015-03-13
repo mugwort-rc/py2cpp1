@@ -6,6 +6,8 @@
 # $Id: html.py 1674 2008-01-29 06:03:36Z edloper $
 #
 
+from __future__ import print_function
+
 """
 The HTML output generator for epydoc.  The main interface provided by
 this module is the L{HTMLWriter} class.

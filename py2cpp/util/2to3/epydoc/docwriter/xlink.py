@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 """
 A Docutils_ interpreted text role for cross-API reference support.
 

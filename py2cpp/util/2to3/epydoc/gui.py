@@ -7,6 +7,8 @@
 # $Id: gui.py 646 2004-03-19 19:01:37Z edloper $
 #
 
+from __future__ import print_function
+
 """
 Graphical interface to epydoc.  This interface might be useful for
 systems where it's inconvenient to use the command-line interface
