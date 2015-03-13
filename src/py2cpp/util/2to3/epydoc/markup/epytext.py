@@ -6,8 +6,6 @@
 # $Id: epytext.py 1652 2007-09-26 04:45:34Z edloper $
 #
 
-from __future__ import print_function
-
 """
 Parser for epytext strings.  Epytext is a lightweight markup whose
 primary intended application is Python documentation strings.  This
@@ -98,6 +96,8 @@ Description::
 """
 # Note: the symbol list is appended to the docstring automatically,
 # below.
+
+from __future__ import print_function
 
 __docformat__ = 'epytext en'
 

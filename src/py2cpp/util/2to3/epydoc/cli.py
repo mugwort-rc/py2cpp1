@@ -6,8 +6,6 @@
 #
 # $Id: cli.py 1678 2008-01-29 17:21:29Z edloper $
 
-from __future__ import print_function
-
 """
 Command-line interface for epydoc.  Abbreviated Usage::
 
@@ -63,6 +61,9 @@ levels are currently defined as follows::
   1               bar             yes            yes       yes
   2               list            yes            yes       yes
 """
+
+from __future__ import print_function
+
 __docformat__ = 'epytext en'
 
 import sys, os, time, re, pickle, textwrap

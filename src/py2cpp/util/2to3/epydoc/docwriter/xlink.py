@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 """
 A Docutils_ interpreted text role for cross-API reference support.
 
@@ -68,6 +66,8 @@ API Linking Options::
 
 .. _Docutils: http://docutils.sourceforge.net/
 """
+
+from __future__ import print_function
 
 # $Id: xlink.py 1586 2007-03-14 01:53:42Z dvarrazzo $
 __version__ = "$Revision: 1586 $"[11:-2]
