@@ -35,6 +35,7 @@ setup(
     author_email="mugwort.rc@gmail.com",
     url="https://github.com/mugwort-rc/py2cpp",
     packages=["py2cpp"],
+    package_dir={"py2cpp": "src/py2cpp"},
     platforms=["any"],
     include_package_data=True,
     classifiers=[
