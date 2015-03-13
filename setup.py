@@ -4,8 +4,9 @@ from setuptools import setup
 
 # c++
 from distutils.core import Extension
+import six
 
-libraries = ['boost_python', 'stdc++']
+libraries = ['boost_python'+('-py34' if six.PY3 else '-py27') , 'stdc++']
 
 # py2cpp.util.tuple_parser
 tuple_parser = Extension(
