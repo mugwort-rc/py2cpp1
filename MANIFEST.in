@@ -1,0 +1,10 @@
+include LICENSE
+include README.rst
+include py2cpp/*.py
+include py2cpp/util/*.py
+include py2cpp/util/2to3/*
+include py2cpp/util/2to3/epydoc/*.py
+include py2cpp/util/2to3/epydoc/docwriter/*.py
+include py2cpp/util/2to3/epydoc/markup/*.py
+include py2cpp/util/2to3/epydoc/test/*.py
+include src/tuple_parser/*
