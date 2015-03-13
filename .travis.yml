@@ -3,13 +3,24 @@ python:
   - "2.7"
   - "3.4"
 
-install:
+env:
+  global:
+    - BOOST_VERSION=1.57.0
+  matrix:
+    - CC=gcc-4.8 CXX=g++-4.8
+
+before_install:
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  - sudo add-apt-repository --yes ppa:boost-latest/ppa
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then sudo add-apt-repository -y ppa:boost-latest/ppa; fi
   - sudo apt-get update
-  - sudo apt-get install libboost1.54-all-dev
-  - sudo apt-get install -qq g++-4.8
-  - export CC="g++-4.8"
+  - sudo apt-get install -qq ${CXX}
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then sudo apt-get install libboost1.54-all-dev; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.4' ]]; then tools/install_boost_python.sh; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.4' ]]; then sudo ln -s /tmp/boost_${BOOST_VERSION//[.]/_}/boost /usr/local/include/boost; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.4' ]]; then sudo ln -s /tmp/boost_${BOOST_VERSION//[.]/_}/stage-python${TRAVIS_PYTHON_VERSION}/lib/* /usr/local/lib/; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.4' ]]; then sudo ldconfig; fi
+
+install:
   - pip install -r requirements.txt
   - python setup.py -q install
 
