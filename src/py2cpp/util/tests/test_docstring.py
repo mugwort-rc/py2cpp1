@@ -3,7 +3,7 @@
 import pytest
 
 from .. import docstring
-from ..docstring import Type
+from ..docstring import Type, TupleType
 
 DOCSTRINGS = [
     # 0: test_simple_param
@@ -41,6 +41,30 @@ DOCSTRINGS = [
     # 8: test_dict_rtype
     """
     :rtype: dict of str
+    """,
+    # 9: test_tuple_param
+    """
+    :param (str,) x:
+    """,
+    # 10: test_tuple_type
+    """
+    :type x: (str,)
+    """,
+    # 11: test_tuple_rtype
+    """
+    :rtype: (str,)
+    """,
+    # 12: test_tuple_params
+    """
+    :param (list of str, dict of str, (str,)) x:
+    """,
+    # 13: test_tuple_types
+    """
+    :type x: (list of str, dict of str, (str,))
+    """,
+    # 14: test_tuple_rtypes
+    """
+    :rtype: (list of str, dict of str, (str,))
     """,
 ]
 
@@ -120,4 +144,60 @@ def test_dict_rtype():
     assert result == {
         'params': {},
         'rtype': Type('dict', Type('str')),
+    }
+
+def test_tuple_param():
+    result = docstring.get_type_hints(DOCSTRINGS[9])
+    assert result == {
+        'params': {
+            'x': TupleType([Type('str')]),
+        },
+        'rtype': Type('void'),
+    }
+
+def test_tuple_type():
+    result = docstring.get_type_hints(DOCSTRINGS[10])
+    assert result == {
+        'params': {
+            'x': TupleType([Type('str')]),
+        },
+        'rtype': Type('void'),
+    }
+
+def test_tuple_rtype():
+    result = docstring.get_type_hints(DOCSTRINGS[11])
+    assert result == {
+        'params': {},
+        'rtype': TupleType([Type('str')]),
+    }
+
+def test_tuple_params():
+    result = docstring.get_type_hints(DOCSTRINGS[12])
+    assert result == {
+        'params': {
+            'x': TupleType([Type('list', Type('str')),
+                            Type('dict', Type('str')),
+                            TupleType([Type('str')])]),
+        },
+        'rtype': Type('void'),
+    }
+
+def test_tuple_types():
+    result = docstring.get_type_hints(DOCSTRINGS[13])
+    assert result == {
+        'params': {
+            'x': TupleType([Type('list', Type('str')),
+                            Type('dict', Type('str')),
+                            TupleType([Type('str')])]),
+        },
+        'rtype': Type('void'),
+    }
+
+def test_tuple_rtypes():
+    result = docstring.get_type_hints(DOCSTRINGS[14])
+    assert result == {
+        'params': {},
+        'rtype': TupleType([Type('list', Type('str')),
+                            Type('dict', Type('str')),
+                            TupleType([Type('str')])]),
     }

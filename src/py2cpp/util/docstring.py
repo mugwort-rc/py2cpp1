@@ -13,6 +13,11 @@ if six.PY3:
 
 from epydoc.markup.restructuredtext import parse_docstring
 
+from .tuple_parser import parse as tuple_parse
+
+
+TUPLE_RE = re.compile(r'^\(.*\)$')
+
 
 class Type(object):
     def __init__(self, type, child=None):
@@ -25,11 +30,29 @@ class Type(object):
         return '<{}>'.format(self.type)
 
     def __eq__(self, rhs):
+        if type(rhs) != Type:
+            return False
         return self.type == rhs.type and self.child == rhs.child
 
     @staticmethod
     def create(type):
         return Type(type)
+
+class TupleType(object):
+    def __init__(self, child=[]):
+        self.child = child
+
+    def __repr__(self):
+        return '<({})>'.format(', '.join(map(repr, self.child)))
+
+    def __eq__(self, rhs):
+        if type(rhs) != TupleType:
+            return False
+        return self.child == rhs.child
+
+    @staticmethod
+    def create(child):
+        return TupleType(child)
 
 
 def get_type_hints(docstring):
@@ -69,7 +92,22 @@ def parse_field(field):
     return param,type,name
 
 def detect_type(text):
+    if TUPLE_RE.match(text):
+        return tuple_detect(text)
     if text.startswith('list of') or text.startswith('dict of'):
         child = detect_type(text[7:].strip())
         return Type(text[:4], child)
     return Type.create(text)
+
+def tuple_detect(text):
+    data = tuple_parse(str(text))
+    return make_tuple_type(data)
+
+def make_tuple_type(data):
+    child = []
+    for d in data:
+        if isinstance(d, str):
+            child.append(detect_type(d))
+        elif isinstance(d, tuple):
+            child.append(make_tuple_type(d))
+    return TupleType.create(child)
